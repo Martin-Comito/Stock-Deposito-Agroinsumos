@@ -1,5 +1,6 @@
 streamlit
 pandas
 openpyxl
-qrcode[pil]
-streamlit-gsheets-connection
+qrcode
+pillow
+st-gsheets-connection
