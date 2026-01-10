@@ -1,4 +1,4 @@
-# AgroCheck Pro
+# AgroCheck
 
 **Gestión inteligente de stock para depósitos de agroquímicos.**
 
