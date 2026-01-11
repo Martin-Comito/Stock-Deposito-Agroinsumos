@@ -14,21 +14,18 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. DISEÑO "NOCHE ESTRELLADA" (Starry Night) 🌌 ---
+# --- 2. DISEÑO "NOCHE ESTRELLADA" (Starry Night) ---
 def cargar_diseño():
     st.markdown("""
         <style>
-        /* IMPORTAR FUENTES */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@500;700&display=swap');
 
-        /* --- VARIABLES DE COLOR --- */
         :root {
-            --bg-top: #020617;        /* Azul Casi Negro */
-            --bg-bottom: #1e3a8a;     /* Azul Noche Profundo */
-            --border: #334155;        /* Bordes sutiles */
+            --bg-top: #020617;
+            --bg-bottom: #1e3a8a;
+            --border: #334155;
         }
 
-        /* FONDO GENERAL CON DEGRADADO */
         .stApp {
             background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
             background-attachment: fixed;
@@ -36,22 +33,14 @@ def cargar_diseño():
             font-family: 'Inter', sans-serif;
         }
 
-        /* SIDEBAR (Barra Lateral) */
         section[data-testid="stSidebar"] {
             background-color: #0b1120;
             border-right: 1px solid var(--border);
         }
-        /* Textos del sidebar en blanco */
-        section[data-testid="stSidebar"] h1, 
-        section[data-testid="stSidebar"] h2, 
-        section[data-testid="stSidebar"] h3, 
-        section[data-testid="stSidebar"] p, 
-        section[data-testid="stSidebar"] span,
-        section[data-testid="stSidebar"] div {
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div {
             color: #e2e8f0 !important;
         }
 
-        /* TÍTULOS */
         h1, h2, h3 {
             font-family: 'Poppins', sans-serif;
             color: #ffffff !important;
@@ -68,7 +57,6 @@ def cargar_diseño():
             -webkit-text-fill-color: transparent;
         }
 
-        /* TARJETAS / CONTENEDORES */
         div[data-testid="stVerticalBlockBorderWrapper"] > div {
             background-color: rgba(15, 23, 42, 0.8);
             border: 1px solid var(--border);
@@ -78,11 +66,10 @@ def cargar_diseño():
             backdrop-filter: blur(5px);
         }
         
-        /* ESTILOS DE SUBTÍTULOS EN MENÚ */
         .menu-card-title {
             font-size: 1.3rem;
             font-weight: 700;
-            color: #fbbf24; /* Dorado */
+            color: #fbbf24;
             margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
@@ -94,10 +81,8 @@ def cargar_diseño():
             font-size: 0.95rem;
         }
 
-        /* INPUTS (CAJAS DE TEXTO) - BLANCOS */
-        div[data-baseweb="input"] > div, 
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="base-input"] {
+        /* INPUTS BLANCOS */
+        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div, div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             color: #000000 !important;
             border: 1px solid #94a3b8 !important;
@@ -114,7 +99,6 @@ def cargar_diseño():
             color: #e2e8f0 !important;
         }
 
-        /* BOTONES */
         div[data-testid="stButton"] > button {
             border-radius: 8px;
             font-weight: 700;
@@ -124,7 +108,6 @@ def cargar_diseño():
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        /* Primario (Dorado Estrella) */
         div[data-testid="stButton"] > button[kind="primary"] {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: #0f172a;
@@ -134,7 +117,6 @@ def cargar_diseño():
             transform: scale(1.03);
             box-shadow: 0 0 25px rgba(245, 158, 11, 0.6);
         }
-        /* Secundario (Borde Blanco/Azul) */
         div[data-testid="stButton"] > button[kind="secondary"] {
             background-color: transparent;
             border: 1px solid #60a5fa;
@@ -146,7 +128,6 @@ def cargar_diseño():
             box-shadow: 0 0 10px #60a5fa;
         }
         
-        /* BOTÓN ELIMINAR (ROJO NEÓN) */
         button[kind="secondary"]:has(div:contains("🗑️")) {
             border-color: #ff4545 !important;
             color: #ff4545 !important;
@@ -157,7 +138,6 @@ def cargar_diseño():
             box-shadow: 0 0 15px #ff4545;
         }
 
-        /* QR CODE CONTAINER */
         .qr-box {
             background-color: white;
             padding: 15px;
@@ -168,14 +148,12 @@ def cargar_diseño():
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
         }
         
-        /* TABLAS */
         div[data-testid="stDataFrame"] {
             background-color: #0f172a;
             border: 1px solid var(--border);
             border-radius: 10px;
         }
 
-        /* HEADER VISIBLE */
         footer {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
@@ -204,12 +182,10 @@ def load_data():
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
-        # Limpieza
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        # Validación
         col_necesaria = 'Cod Producto'
         if col_necesaria not in df_prod.columns:
             st.error(f"🛑 ERROR CRÍTICO: No encuentro la columna '{col_necesaria}' en la hoja 'Productos'.")
@@ -242,15 +218,13 @@ def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    # Colores Neón para resaltar en la noche
     if val < hoy: return 'color: #ff4545; font-weight: bold; text-shadow: 0 0 5px #ff4545;'
     elif val < alerta: return 'color: #ffd700; font-weight: bold;'
     else: return 'color: #4ade80; font-weight: bold;'
 
-# --- SIDEBAR (CON QR) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### 📱 AgroCheck Mobile")
-    
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
     qr = qrcode.QRCode(version=1, box_size=8, border=0)
@@ -270,14 +244,12 @@ def vista_menu():
     st.write("") 
     
     c1, c2 = st.columns(2)
-    
     with c1:
         with st.container(border=True):
             st.markdown("""
                 <div class="menu-card-title">🖥️ Oficina Técnica</div>
                 <div class="menu-card-desc">Gestión administrativa, órdenes de egreso y altas.</div>
             """, unsafe_allow_html=True)
-            
             if st.button("NUEVA ORDEN DE SALIDA", use_container_width=True, type="primary"):
                 st.session_state.vista = "Carga"; st.rerun()
             if st.button("INGRESO DE MERCADERÍA", use_container_width=True):
@@ -289,7 +261,6 @@ def vista_menu():
                 <div class="menu-card-title">📦 Depósito / Operativa</div>
                 <div class="menu-card-desc">Control de inventario físico y pedidos.</div>
             """, unsafe_allow_html=True)
-
             if st.button("ARMAR PEDIDOS", use_container_width=True):
                 st.session_state.vista = "Espera"; st.rerun()
             if st.button("STOCK E HISTORIAL", use_container_width=True):
@@ -330,8 +301,9 @@ def vista_ingreso():
     with st.container(border=True):
         st.markdown("**Calculadora de Cantidad**")
         cc1, cc2, cc3 = st.columns(3)
-        n1 = cc1.number_input("Cant. Bultos", min_value=0.0)
-        n2 = cc2.number_input("Tamaño Unitario", min_value=0.0)
+        # value=None permite que el campo inicie vacío
+        n1 = cc1.number_input("Cant. Bultos", min_value=0.0, value=None, placeholder="0")
+        n2 = cc2.number_input("Tamaño Unitario", min_value=0.0, value=None, placeholder="0")
         unidad = cc3.selectbox("Unidad", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
         
         total_bruto = (n1 or 0) * (n2 or 0)
@@ -341,6 +313,7 @@ def vista_ingreso():
 
     if st.button("💾 GUARDAR", type="primary", use_container_width=True):
         if not lote or cant_final <= 0: st.error("Faltan datos."); return
+        
         if es_nuevo:
             df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
 
@@ -389,8 +362,9 @@ def vista_carga():
             lote_selec = lote_str.split(" (")[0]
 
         cc1, cc2, cc3 = st.columns(3)
-        n1 = cc1.number_input("Cant. Envases", min_value=0.0)
-        n2 = cc2.number_input("Lts/Kg Envase", min_value=0.0)
+        # Ajuste: value=None para que aparezca vacío
+        n1 = cc1.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0")
+        n2 = cc2.number_input("Lts/Kg Envase", min_value=0.0, value=None, placeholder="0")
         total = (n1 or 0) * (n2 or 0)
         cc3.metric("Total Salida", f"{total:.2f}")
 
@@ -398,7 +372,6 @@ def vista_carga():
         if lote_selec and total > 0:
             st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total, "lote_asig": lote_selec, "det": f"{n1} env x {n2}", "tipo": tipo_op, "cta": cuenta})
 
-    # --- CARRITO EDITABLE ---
     if st.session_state.carrito:
         st.markdown("##### 🛒 Carrito (Items en preparación)")
         
@@ -424,7 +397,12 @@ def vista_carga():
                 
                 df_m_live = pd.concat([df_m_live, pd.DataFrame(new_rows)], ignore_index=True)
                 save_all(df_p, df_s, df_m_live)
-                st.session_state.carrito = []; st.success("Enviado!"); time.sleep(1); st.rerun()
+                
+                # --- VACIADO DE CARRITO ---
+                st.session_state.carrito = [] # Borrar memoria
+                st.success("Enviado!"); 
+                time.sleep(1)
+                st.rerun() # Recarga obligatoria para limpiar pantalla
             else: st.error("Falta Destino")
 
 def vista_espera():
@@ -454,8 +432,9 @@ def vista_espera():
             with c_action:
                 c1, c2, c3 = st.columns(3)
                 l_real = c1.text_input("Lote Real", key=f"l_{idx}")
-                cant_env = c2.number_input("Envases", key=f"c_{idx}")
-                tam_env = c3.number_input("Tam", key=f"t_{idx}")
+                # Ajuste: Etiquetas iguales a oficina y campos vacíos
+                cant_env = c2.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0", key=f"c_{idx}")
+                tam_env = c3.number_input("Lts/Kg Envase", min_value=0.0, value=None, placeholder="0", key=f"t_{idx}")
                 real_total = (cant_env or 0) * (tam_env or 0)
                 
                 if st.button("Confirmar", key=f"b_{idx}", type="primary"):
