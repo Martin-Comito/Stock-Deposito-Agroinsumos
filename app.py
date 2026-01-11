@@ -6,25 +6,26 @@ import qrcode
 from io import BytesIO
 from streamlit_gsheets import GSheetsConnection
 
-#Configuracion 
+#CONFIGURACIÓN
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
-#Base de datos
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
-#CONEXIÓN GOOGLE SHEETS
+
+
+#CONEXIÓN GOOGLE SHEET
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-#Estado de sesion
+#ESTADO DE SESIÓN
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-#Funciones de datos
+#FUNCIONES DE DATOS
 def load_data():
     try:
         conn = get_db_connection()
-        #MEMORIA DE 5 SEGUNDOS (ttl=5) PARA EVITAR BLOQUEO DE GOOGLE
+        #MEMORIA DE 5 SEGUNDOS (ttl=5)
         df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=5)
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
@@ -34,7 +35,7 @@ def load_data():
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        #Validación básica
+        # Validación básica
         if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
             st.error(f"Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -45,7 +46,6 @@ def load_data():
         
         return df_prod, df_stock, df_mov
     except Exception as e:
-        # Manejo suave del error de cuota
         if "Quota exceeded" in str(e):
             st.warning("Google está pidiendo un respiro. Espera 10 segundos y recarga.")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -74,9 +74,9 @@ def aplicar_semaforo(val):
     elif val < alerta: return 'background-color: #ffd700; color: black'
     else: return 'background-color: #90ee90; color: black'
 
-#SIDEBAR
+# SIDEBAR
 with st.sidebar:
-    st.title("Móvil")
+    st.title("📲 Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
@@ -124,9 +124,9 @@ def vista_ingreso():
     fecha_venc = c6.date_input("Fecha Vencimiento")
 
     st.markdown("---")
-    st.info("🧮 Calculadora de Cantidad")
+    st.info("Calculadora de Cantidad")
     
-    #SECCIÓN DE UNIDADES CON CONVERSIÓN
+    #SECCIÓN DE UNIDADES
     col_calc1, col_calc2, col_calc3 = st.columns(3)
     
     n1 = col_calc1.number_input("Cant. de Envases/Bultos", min_value=0.0, value=None, placeholder="0")
@@ -137,10 +137,10 @@ def vista_ingreso():
     val_n2 = n2 if n2 is not None else 0.0
     total_bruto = val_n1 * val_n2
     
-    # Conversión automática a Kilos/Litros
+    #Conversión automática a Kilos/Litros
     if unidad == "Gramos" or unidad == "Cm3 / Ml":
         cant_final = total_bruto / 1000
-        msg_unidad = "Kg/L (Convertido automáticamente)"
+        msg_unidad = "Kg/L (Convertido autom.)"
     else:
         cant_final = total_bruto
         msg_unidad = unidad
@@ -342,10 +342,11 @@ def vista_consultas():
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
             
-            if 'SENASA' in df_view.columns:
-                df_view['SENASA'] = df_view['SENASA'].astype(str).replace('nan', '')
-            if 'Cod_Barras' in df_view.columns:
-                df_view['Cod_Barras'] = df_view['Cod_Barras'].astype(str).replace('nan', '')
+            # LIMPIEZA DE CÓDIGOS PARA QUITAR EL .0 
+            cols_to_clean = ['SENASA', 'Cod_Barras', 'Numero de Lote']
+            for col in cols_to_clean:
+                if col in df_view.columns:     
+                    df_view[col] = df_view[col].astype(str).str.replace(r'\.0$', '', regex=True).replace('nan', '')
 
             if 'Fecha_Vencimiento' in df_view.columns:
                 df_view = df_view.sort_values(by='Fecha_Vencimiento', ascending=True)
@@ -356,10 +357,7 @@ def vista_consultas():
                     use_container_width=True, 
                     height=500,
                     column_config={
-                        "Cantidad": st.column_config.NumberColumn(
-                            "Cantidad",
-                            format="%.2f"
-                        ),
+                        "Cantidad": st.column_config.NumberColumn("Cantidad", format="%.2f"),
                         "SENASA": st.column_config.TextColumn("SENASA"),
                         "Cod_Barras": st.column_config.TextColumn("Cod_Barras"),
                         "Numero de Lote": st.column_config.TextColumn("Numero de Lote")
@@ -382,7 +380,7 @@ def vista_consultas():
         else:
             st.dataframe(df_m, use_container_width=True)
 
-# ROUTER
+#Router
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
