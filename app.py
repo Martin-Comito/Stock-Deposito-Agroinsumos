@@ -7,14 +7,13 @@ from io import BytesIO
 import re
 from streamlit_gsheets import GSheetsConnection
 
-# --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(
     page_title="AgroCheck Pro", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
-# --- 2. DISEÑO "NOCHE ESTRELLADA" (Starry Night) 🌌 ---
+#DISEÑO "NOCHE ESTRELLADA"
 def cargar_diseño():
     st.markdown("""
         <style>
@@ -23,26 +22,22 @@ def cargar_diseño():
 
         /* --- VARIABLES DE COLOR --- */
         :root {
-            --bg-top: #020617;        /* Azul Casi Negro (Cielo arriba) */
-            --bg-bottom: #1e3a8a;     /* Azul Noche Profundo (Horizonte) */
-            --card-bg: #0f172a;       /* Azul Pizarra Oscuro (Tarjetas) */
-            --text-main: #f1f5f9;     /* Blanco Estrella */
-            --gold-star: #fbbf24;     /* Dorado (Botones/Acentos) */
+            --bg-top: #020617;        /* Azul Casi Negro */
+            --bg-bottom: #1e3a8a;     /* Azul Noche Profundo */
             --border: #334155;        /* Bordes sutiles */
         }
 
         /* FONDO GENERAL CON DEGRADADO */
         .stApp {
-            /* Degradado sutil que simula el cielo nocturno */
             background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-            background-attachment: fixed; /* El fondo se queda fijo al scrollear */
-            color: var(--text-main);
+            background-attachment: fixed;
+            color: #f1f5f9;
             font-family: 'Inter', sans-serif;
         }
 
         /* SIDEBAR (Barra Lateral) */
         section[data-testid="stSidebar"] {
-            background-color: #0b1120; /* Oscuro sólido */
+            background-color: #0b1120;
             border-right: 1px solid var(--border);
         }
         /* Textos del sidebar en blanco */
@@ -60,29 +55,29 @@ def cargar_diseño():
             font-family: 'Poppins', sans-serif;
             color: #ffffff !important;
             font-weight: 700;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* Resplandor suave */
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
         }
         h1 {
             text-align: center;
             text-transform: uppercase;
             letter-spacing: 2px;
             margin-bottom: 30px;
-            background: linear-gradient(to right, #ffffff, #fbbf24); /* Texto degradado blanco a dorado */
+            background: linear-gradient(to right, #ffffff, #fbbf24);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         /* TARJETAS / CONTENEDORES */
         div[data-testid="stVerticalBlockBorderWrapper"] > div {
-            background-color: rgba(15, 23, 42, 0.8); /* Semi-transparente */
+            background-color: rgba(15, 23, 42, 0.8);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Sombra profunda */
-            backdrop-filter: blur(5px); /* Efecto vidrio */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
         }
 
-        /* INPUTS (CAJAS DE TEXTO) - BLANCOS (Tu requisito) */
+        /* INPUTS (CAJAS DE TEXTO) - BLANCOS */
         div[data-baseweb="input"] > div, 
         div[data-baseweb="select"] > div,
         div[data-baseweb="base-input"] {
@@ -95,11 +90,9 @@ def cargar_diseño():
             color: #000000 !important;
             caret-color: #000000;
         }
-        /* Texto dentro de los selectbox */
         div[data-baseweb="select"] span {
             color: #000000 !important;
         }
-        /* Labels */
         label, .stMarkdown p {
             color: #e2e8f0 !important;
         }
@@ -117,8 +110,8 @@ def cargar_diseño():
         /* Primario (Dorado Estrella) */
         div[data-testid="stButton"] > button[kind="primary"] {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: #0f172a; /* Texto oscuro para contraste con el dorado */
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); /* Resplandor dorado */
+            color: #0f172a;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
             transform: scale(1.03);
@@ -144,7 +137,7 @@ def cargar_diseño():
             text-align: center;
             margin-top: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Resplandor blanco */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
         }
         
         /* TABLAS */
@@ -154,30 +147,27 @@ def cargar_diseño():
             border-radius: 10px;
         }
 
-        /* OCULTAR ELEMENTOS DEFAULT */
-        #MainMenu {visibility: hidden;}
+        /* IMPORTANTE: NO OCULTAR EL HEADER PARA QUE SE VEA EL MENÚ EN MÓVIL */
+        /* Solo ocultamos el footer */
         footer {visibility: hidden;}
-        header {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
 
 cargar_diseño()
 
-# ---------------------------------------------------------
-# ✅ TU BASE DE DATOS
+#BASE DE DATOS
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
-# ---------------------------------------------------------
 
-# --- CONEXIÓN ---
+#CONEXIÓN
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-# --- ESTADO ---
+#ESTADO
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-# --- FUNCIONES DE DATOS ---
+#FUNCIONES DE DATOS
 def load_data():
     try:
         conn = get_db_connection()
@@ -185,7 +175,6 @@ def load_data():
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
-        # Limpieza
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
@@ -197,7 +186,7 @@ def load_data():
         
         return df_prod, df_stock, df_mov
     except Exception as e:
-        if "Quota exceeded" in str(e): st.warning("⚠️ Espera unos segundos..."); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        if "Quota exceeded" in str(e): st.warning("Espera unos segundos..."); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         st.error(f"Error: {e}"); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 def save_all(df_p, df_s, df_m):
@@ -217,12 +206,11 @@ def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    # Colores Neón para resaltar en la noche
-    if val < hoy: return 'color: #ff4545; font-weight: bold; text-shadow: 0 0 5px #ff4545;' # Rojo Neón
-    elif val < alerta: return 'color: #ffd700; font-weight: bold;' # Dorado
-    else: return 'color: #4ade80; font-weight: bold;' # Verde Neón
+    if val < hoy: return 'color: #ff4545; font-weight: bold; text-shadow: 0 0 5px #ff4545;'
+    elif val < alerta: return 'color: #ffd700; font-weight: bold;'
+    else: return 'color: #4ade80; font-weight: bold;'
 
-# --- SIDEBAR ---
+#SIDEBAR
 with st.sidebar:
     st.markdown("### 📱 AgroCheck Mobile")
     
@@ -230,16 +218,16 @@ with st.sidebar:
     
     qr = qrcode.QRCode(version=1, box_size=8, border=0)
     qr.add_data(url_app); qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white") # QR Negro sobre Blanco (Clásico y funcional)
+    img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO(); img.save(buf, format="PNG")
     
-    # Caja Blanca para el QR
+    # QR
     st.markdown('<div class="qr-box">', unsafe_allow_html=True)
     st.image(buf.getvalue(), use_container_width=True)
     st.markdown('<p style="color:black; margin:0; font-weight:bold;">ESCANEAR ACCESO</p>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- VISTAS ---
+#VISTAS
 
 def vista_menu():
     st.title("Gestión Depósito Agroquímicos")
@@ -249,7 +237,7 @@ def vista_menu():
     
     with c1:
         with st.container(border=True):
-            st.markdown("### 🏢 Oficina Técnica")
+            st.markdown("Oficina Técnica")
             st.markdown("Gestión administrativa.")
             st.write("")
             if st.button("NUEVA ORDEN DE SALIDA", use_container_width=True, type="primary"):
@@ -259,7 +247,7 @@ def vista_menu():
             
     with c2:
         with st.container(border=True):
-            st.markdown("### 🚜 Depósito / Operativa")
+            st.markdown("Depósito / Operativa")
             st.markdown("Control de inventario.")
             st.write("")
             if st.button("ARMAR PEDIDOS", use_container_width=True):
@@ -270,7 +258,7 @@ def vista_menu():
 def vista_ingreso():
     c1, c2 = st.columns([1, 4])
     with c1:
-        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c2: st.subheader("Ingreso de Stock")
 
     df_p, df_s, df_m = load_data()
@@ -278,7 +266,7 @@ def vista_ingreso():
 
     with st.container(border=True):
         col_switch, _ = st.columns([2,1])
-        es_nuevo = col_switch.checkbox("➕ ¿Producto NUEVO?")
+        es_nuevo = col_switch.checkbox("¿Producto NUEVO?")
 
         if es_nuevo:
             c_new1, c_new2 = st.columns(2)
@@ -311,7 +299,7 @@ def vista_ingreso():
         msg = "Kg/L" if unidad in ["Gramos", "Cm3 / Ml"] else unidad
         st.metric("Total a Ingresar", f"{cant_final:.2f} {msg}")
 
-    if st.button("💾 GUARDAR", type="primary", use_container_width=True):
+    if st.button("GUARDAR", type="primary", use_container_width=True):
         if not lote or cant_final <= 0: st.error("Faltan datos."); return
         if es_nuevo:
             df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
@@ -336,7 +324,7 @@ def vista_ingreso():
 def vista_carga():
     c1, c2 = st.columns([1, 4])
     with c1:
-        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c2: st.subheader("Nueva Orden de Salida")
 
     df_p, df_s, _ = load_data()
@@ -366,14 +354,14 @@ def vista_carga():
         total = (n1 or 0) * (n2 or 0)
         cc3.metric("Total Salida", f"{total:.2f}")
 
-    if st.button("➕ AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
+    if st.button("AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
         if lote_selec and total > 0:
             st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total, "lote_asig": lote_selec, "det": f"{n1} env x {n2}", "tipo": tipo_op, "cta": cuenta})
 
     if st.session_state.carrito:
-        st.markdown("##### 🛒 Carrito")
+        st.markdown("Carrito")
         st.table(pd.DataFrame(st.session_state.carrito))
-        if st.button("✅ CONFIRMAR Y ENVIAR", type="primary", use_container_width=True):
+        if st.button("CONFIRMAR Y ENVIAR", type="primary", use_container_width=True):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
                 conn = get_db_connection()
@@ -390,7 +378,7 @@ def vista_carga():
 def vista_espera():
     c1, c2 = st.columns([1, 4])
     with c1:
-        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c2: st.subheader("Armado de Pedidos")
 
     df_p, df_s, df_m = load_data()
@@ -429,11 +417,11 @@ def vista_espera():
 def vista_consultas():
     c1, c2 = st.columns([1, 4])
     with c1:
-        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c2: st.subheader("Stock & Historial")
 
     df_p, df_s, df_m = load_data()
-    t1, t2 = st.tabs(["📦 STOCK REAL", "📋 HISTORIAL"])
+    t1, t2 = st.tabs(["STOCK REAL", "HISTORIAL"])
     
     with t1:
         if not df_s.empty:
@@ -452,7 +440,7 @@ def vista_consultas():
         if not df_m.empty:
             st.dataframe(df_m.sort_values('Fecha Hora', ascending=False), use_container_width=True, height=600, column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f")})
 
-# --- ROUTER ---
+#ROUTER
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
