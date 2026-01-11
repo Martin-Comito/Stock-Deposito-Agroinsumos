@@ -10,74 +10,122 @@ from streamlit_gsheets import GSheetsConnection
 #CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
+#CAPA DE DISEÑO
 def cargar_diseño():
     st.markdown("""
         <style>
-        /* --- OPCIÓN 2: CARBONO & ESMERALDA --- */
+        /* --- PALETA GLACIAR PATAGONIA ---
+           Fondo Principal: #e3f2fd (Azul Hielo muy clarito)
+           Sidebar: #ffffff (Blanco Nieve)
+           Títulos: #0277bd (Azul Lago Profundo)
+           Botones: #00897b (Verde Turquesa / Agua)
+           Texto: #37474f (Gris Roca oscuro - Muy legible)
+        ----------------------------------- */
+
+        /* IMPORTAR FUENTE MÁS MODERNA (Google Fonts) */
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
 
         /* FONDO GENERAL */
         .stApp {
-            background-color: #000000; /* Negro puro para máximo contraste OLED */
-            color: #e0e0e0;
+            background-color: #f1f8ff; /* Blanco azulado muy fresco */
+            color: #37474f;
+            font-family: 'Open Sans', sans-serif;
         }
 
-        /* BARRA LATERAL */
+        /* BARRA LATERAL (SIDEBAR) */
         section[data-testid="stSidebar"] {
-            background-color: #111111; /* Gris muy oscuro */
-            border-right: 1px solid #333;
+            background-color: #ffffff;
+            border-right: 1px solid #d1d9e6;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05); /* Sombra suave */
         }
 
-        /* TÍTULOS (Verde Esmeralda Elegante) */
+        /* TÍTULOS */
         h1, h2, h3, h4 {
-            color: #4caf50 !important; /* Verde Material Design */
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: #1565c0 !important; /* Azul Lago */
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        h1 {
+            text-align: center;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #0d47a1 !important; /* Azul más profundo para el título principal */
+            text-shadow: 1px 1px 0px rgba(255,255,255,1);
+            margin-bottom: 30px;
         }
 
         /* BOTONES */
         div[data-testid="stButton"] > button {
-            border-radius: 6px;
+            border-radius: 12px; /* Bordes bien redondeados (amigables) */
             font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        /* Primario (Verde) */
-        div[data-testid="stButton"] > button[kind="primary"] {
-            background-color: #2e7d32; /* Verde bosque profundo */
             border: none;
+            box-shadow: 0 4px 6px rgba(0, 137, 123, 0.2);
+            transition: all 0.2s;
+            height: 3.2em;
+        }
+
+        /* Botón Primario (Turquesa Glaciar) */
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
             color: white;
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background-color: #1b5e20;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.4); /* Resplandor verde */
+            transform: scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 172, 193, 0.4);
         }
 
-        /* Secundario (Borde Verde) */
+        /* Botón Secundario (Blanco con borde azul) */
         div[data-testid="stButton"] > button[kind="secondary"] {
-            background-color: transparent;
-            border: 1px solid #4caf50;
-            color: #4caf50;
+            background-color: #ffffff;
+            border: 2px solid #29b6f6;
+            color: #0288d1;
+        }
+        div[data-testid="stButton"] > button[kind="secondary"]:hover {
+            background-color: #e1f5fe;
         }
 
-        /* TARJETAS MÉTRICAS */
+        /* TARJETAS DE MÉTRICAS (Efecto Hielo Flotante) */
         div[data-testid="stMetric"] {
-            background-color: #1a1a1a;
-            border: 1px solid #333;
-            border-left: 4px solid #4caf50; /* Acento verde */
-        }
-        div[data-testid="stMetricValue"] {
-            color: #ffffff;
+            background-color: #ffffff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(179, 229, 252, 0.4); /* Sombra azulada */
+            border: 1px solid #e1f5fe;
+            border-left: 6px solid #29b6f6; /* Borde celeste */
         }
         div[data-testid="stMetricLabel"] {
-            color: #9e9e9e;
+            color: #78909c; /* Gris azulado */
+            font-weight: 600;
+        }
+        div[data-testid="stMetricValue"] {
+            color: #0277bd; /* Azul fuerte */
         }
 
-        /* INPUTS */
-        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-            background-color: #1a1a1a !important;
-            color: white !important;
-            border: 1px solid #333 !important;
+        /* INPUTS Y SELECTS (Blancos y limpios) */
+        div[data-baseweb="input"] > div, 
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="base-input"] {
+            background-color: #ffffff !important;
+            border-radius: 8px;
+            border: 1px solid #cfd8dc !important;
+            color: #37474f !important;
+        }
+        input {
+             color: #37474f !important;
+        }
+        
+        /* Checkbox */
+        label[data-baseweb="checkbox"] > div {
+             background-color: #ffffff !important;
+        }
+
+        /* TABLAS (Limpias y Frescas) */
+        div[data-testid="stDataFrame"] {
+            border: 1px solid #e1f5fe;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background-color: white;
         }
         
         /* LIMPIEZA */
@@ -85,12 +133,10 @@ def cargar_diseño():
         </style>
     """, unsafe_allow_html=True)
 
-# Activacion del diseño
 cargar_diseño()
 
 #BASE DE DATOS
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
-
 #CONEXIÓN GOOGLE SHEETS
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
@@ -146,7 +192,6 @@ def save_all(df_p, df_s, df_m):
         df_s_export['Fecha_Vencimiento'] = df_s_export['Fecha_Vencimiento'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Stock_Real", data=df_s_export)
         
-        # Convercion de fecha de movimientos a string antes de guardar
         df_m_export = df_m.copy()
         df_m_export['Fecha Hora'] = df_m_export['Fecha Hora'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m_export)
@@ -155,30 +200,31 @@ def save_all(df_p, df_s, df_m):
     except Exception as e:
         st.error(f"Error al guardar en la nube: {e}")
 
-#SEMÁFORO AJUSTADO A LA PALETA DE COLORES
+#SEMAFORO
 def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    if val < hoy: return 'background-color: #691d1d; color: white' # Rojo Rubí Profundo
-    elif val < alerta: return 'background-color: #7f6000; color: white' # Dorado/Ámbar Oscuro
-    else: return 'background-color: #1b4629; color: white' # Verde Esmeralda Profundo
+    if val < hoy: return 'background-color: #ffcdd2; color: #b71c1c'
+    elif val < alerta: return 'background-color: #fff9c4; color: #f57f17' 
+    else: return 'background-color: #c8e6c9; color: #1b5e20' 
 
 #SIDEBAR
 with st.sidebar:
     st.title("📲 Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
-    # QR con fondo blanco para contraste
+    # QR
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
     qr.add_data(url_app); qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white") 
     buf = BytesIO(); img.save(buf, format="PNG")
     
     st.image(buf.getvalue(), caption="Escanear para conectar")
-    st.info("Sistema optimizado. Interfaz sombría y elegante.")
+    st.markdown("---")
+    st.info("**Tip:** Usa el modo claro para mejor lectura bajo el sol.")
 
-# VISTAS
+#VISTAS
 
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
@@ -207,7 +253,7 @@ def vista_ingreso():
 
     #OPCIÓN DE PRODUCTO NUEVO
     col_switch, _ = st.columns([2,1])
-    es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO?")
+    es_nuevo = col_switch.checkbox("¿Es un producto NUEVO?")
 
     if es_nuevo:
         st.markdown("### Alta de Producto Nuevo")
@@ -328,7 +374,6 @@ def vista_carga():
         lote_selec = None; stock_disp = 0
     else:
         stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
-        #Solo 2 decimales
         opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
         lote_str = st.selectbox("Lote a utilizar", opciones_lote)
         lote_selec = lote_str.split(" (")[0]
@@ -382,7 +427,7 @@ def vista_carga():
             else: st.error("Falta el Destino")
 
 def vista_espera():
-    if st.button("⬅️ Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Armado de Pedidos (Depósito)")
     df_p, df_s, df_m = load_data()
     
@@ -462,7 +507,7 @@ def vista_espera():
                             st.success("Item Confirmado"); time.sleep(1); st.rerun()
 
 def vista_consultas():
-    if st.button("⬅️ Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Semáforo de Vencimientos y Stock")
     df_p, df_s, df_m = load_data()
     t1, t2 = st.tabs(["STOCK & VENCIMIENTOS", "MOVIMIENTOS"])
@@ -472,7 +517,7 @@ def vista_consultas():
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
             
-            #LIMPIEZA DE CÓDIGOS (Eliminar .0 al final)
+            #LIMPIEZA DE CÓDIGOS
             cols_to_clean = ['SENASA', 'Cod_Barras', 'Numero de Lote']
             for col in cols_to_clean:
                 if col in df_view.columns:
@@ -495,7 +540,6 @@ def vista_consultas():
                 )
             else:
                 st.dataframe(df_view, use_container_width=True)
-        else: st.warning("Sin stock registrado.")
     with t2:
         if not df_m.empty and 'Fecha Hora' in df_m.columns:
             st.markdown("Historial Completo de Movimientos")
@@ -515,11 +559,9 @@ def vista_consultas():
         else:
             st.dataframe(df_m, use_container_width=True)
 
-# Router
+#ROUTER
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
-
-
