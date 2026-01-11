@@ -81,7 +81,6 @@ def cargar_diseño():
             font-size: 0.95rem;
         }
 
-        /* INPUTS BLANCOS */
         div[data-baseweb="input"] > div, div[data-baseweb="select"] > div, div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             color: #000000 !important;
@@ -175,6 +174,11 @@ if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
 # --- FUNCIONES DE DATOS ---
+def limpiar_columnas(df):
+    if df.empty: return df
+    df.columns = df.columns.str.strip()
+    return df
+
 def load_data():
     try:
         conn = get_db_connection()
@@ -182,24 +186,37 @@ def load_data():
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
-        if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
-        if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
-        if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
+        df_prod = limpiar_columnas(df_prod)
+        df_stock = limpiar_columnas(df_stock)
+        df_mov = limpiar_columnas(df_mov)
 
-        col_necesaria = 'Cod Producto'
-        if col_necesaria not in df_prod.columns:
-            st.error(f"🛑 ERROR CRÍTICO: No encuentro la columna '{col_necesaria}' en la hoja 'Productos'.")
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        # Validación Crítica de Columnas
+        if not df_prod.empty and 'Cod Producto' not in df_prod.columns:
+            for col in df_prod.columns:
+                if col.lower() in ['codigo', 'cod_producto', 'id', 'cod']:
+                    df_prod.rename(columns={col: 'Cod Producto'}, inplace=True)
+                    break
+        
+        if not df_prod.empty and 'Cod Producto' not in df_prod.columns:
+            st.error("🛑 Error: No encuentro la columna 'Cod Producto' en la hoja Productos.")
+            st.stop()
 
         if df_prod.empty: df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
         if 'Fecha_Vencimiento' not in df_stock.columns: df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
         if 'Fecha Hora' in df_mov.columns: df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
         
+        # --- CORRECCIÓN CRÍTICA DE MAYÚSCULAS ---
+        # Forzamos que todos los lotes en la base de datos sean MAYÚSCULAS
+        if not df_stock.empty and 'Numero de Lote' in df_stock.columns:
+            df_stock['Numero de Lote'] = df_stock['Numero de Lote'].astype(str).str.strip().str.upper()
+        if not df_mov.empty and 'Numero de Lote' in df_mov.columns:
+            df_mov['Numero de Lote'] = df_mov['Numero de Lote'].astype(str).str.strip().str.upper()
+
         return df_prod, df_stock, df_mov
     except Exception as e:
-        if "Quota exceeded" in str(e): st.warning("⚠️ Espera unos segundos..."); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-        st.error(f"Error: {e}"); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        if "Quota exceeded" in str(e): st.warning("⚠️ Espera unos segundos..."); st.stop()
+        st.error(f"Error cargando datos: {e}"); st.stop()
 
 def save_all(df_p, df_s, df_m):
     try:
@@ -301,7 +318,6 @@ def vista_ingreso():
     with st.container(border=True):
         st.markdown("**Calculadora de Cantidad**")
         cc1, cc2, cc3 = st.columns(3)
-        # value=None permite que el campo inicie vacío
         n1 = cc1.number_input("Cant. Bultos", min_value=0.0, value=None, placeholder="0")
         n2 = cc2.number_input("Tamaño Unitario", min_value=0.0, value=None, placeholder="0")
         unidad = cc3.selectbox("Unidad", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
@@ -314,21 +330,24 @@ def vista_ingreso():
     if st.button("💾 GUARDAR", type="primary", use_container_width=True):
         if not lote or cant_final <= 0: st.error("Faltan datos."); return
         
+        # Normalizar LOTE a Mayúsculas
+        lote_final = lote.strip().upper()
+
         if es_nuevo:
             df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
 
-        mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
+        mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote_final)
         fecha_venc_dt = pd.to_datetime(fecha_venc)
 
         if mask.any():
             df_s.loc[mask, 'Cantidad'] += cant_final
             df_s.loc[mask, 'Fecha_Vencimiento'] = fecha_venc_dt
         else:
-            new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
+            new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote_final, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
             df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
         
         obs = f"Ingreso: {n1} x {n2} {unidad}"
-        mov = {'Fecha Hora': datetime.now(), 'ID_Pedido': "INGRESO", 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 'Cuenta/Entidad': locals().get('cuenta', ''), 'Numero de Lote': lote, 'Cantidad': cant_final, 'Destino Origen': "Depósito", 'Observaciones': obs, 'Estado_Prep': 'TERMINADO'}
+        mov = {'Fecha Hora': datetime.now(), 'ID_Pedido': "INGRESO", 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 'Cuenta/Entidad': locals().get('cuenta', ''), 'Numero de Lote': lote_final, 'Cantidad': cant_final, 'Destino Origen': "Depósito", 'Observaciones': obs, 'Estado_Prep': 'TERMINADO'}
         
         df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
         save_all(df_p, df_s, df_m)
@@ -341,6 +360,8 @@ def vista_carga():
     with c2: st.subheader("Nueva Orden de Salida")
 
     df_p, df_s, _ = load_data()
+    if df_p.empty: st.warning("Base de datos vacía."); return
+    
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
     with st.container(border=True):
@@ -362,7 +383,6 @@ def vista_carga():
             lote_selec = lote_str.split(" (")[0]
 
         cc1, cc2, cc3 = st.columns(3)
-        # Ajuste: value=None para que aparezca vacío
         n1 = cc1.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0")
         n2 = cc2.number_input("Lts/Kg Envase", min_value=0.0, value=None, placeholder="0")
         total = (n1 or 0) * (n2 or 0)
@@ -397,12 +417,8 @@ def vista_carga():
                 
                 df_m_live = pd.concat([df_m_live, pd.DataFrame(new_rows)], ignore_index=True)
                 save_all(df_p, df_s, df_m_live)
-                
-                # --- VACIADO DE CARRITO ---
-                st.session_state.carrito = [] # Borrar memoria
-                st.success("Enviado!"); 
-                time.sleep(1)
-                st.rerun() # Recarga obligatoria para limpiar pantalla
+                st.session_state.carrito = []
+                st.success("Enviado!"); time.sleep(1); st.rerun()
             else: st.error("Falta Destino")
 
 def vista_espera():
@@ -412,6 +428,9 @@ def vista_espera():
     with c2: st.subheader("Armado de Pedidos")
 
     df_p, df_s, df_m = load_data()
+    # VALIDACIÓN EXTRA: Si está vacío, no intentar acceder a columnas
+    if df_p.empty: st.info("Sin datos de productos."); return
+    
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
     
     pendientes = df_m[df_m['Estado_Prep'] == 'PENDIENTE'].copy()
@@ -432,18 +451,28 @@ def vista_espera():
             with c_action:
                 c1, c2, c3 = st.columns(3)
                 l_real = c1.text_input("Lote Real", key=f"l_{idx}")
-                # Ajuste: Etiquetas iguales a oficina y campos vacíos
                 cant_env = c2.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0", key=f"c_{idx}")
                 tam_env = c3.number_input("Lts/Kg Envase", min_value=0.0, value=None, placeholder="0", key=f"t_{idx}")
                 real_total = (cant_env or 0) * (tam_env or 0)
                 
                 if st.button("Confirmar", key=f"b_{idx}", type="primary"):
                     if l_real and real_total > 0:
-                        df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'; df_m.loc[idx, 'Numero de Lote'] = l_real; df_m.loc[idx, 'Cantidad'] = real_total * -1
-                        mask = (df_s['Cod Producto'] == row['Cod Producto']) & (df_s['Numero de Lote'] == l_real)
-                        if mask.any(): df_s.loc[mask, 'Cantidad'] -= real_total
-                        else: df_s = pd.concat([df_s, pd.DataFrame([{'Cod Producto': row['Cod Producto'], 'Numero de Lote': l_real, 'Cantidad': -real_total}])], ignore_index=True)
-                        save_all(df_p, df_s, df_m); st.rerun()
+                        # CONVERTIR A MAYÚSCULAS PARA MATCH EXACTO
+                        lote_final = l_real.strip().upper()
+                        
+                        df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'
+                        df_m.loc[idx, 'Numero de Lote'] = lote_final
+                        df_m.loc[idx, 'Cantidad'] = real_total * -1
+                        
+                        mask = (df_s['Cod Producto'] == row['Cod Producto']) & (df_s['Numero de Lote'] == lote_final)
+                        
+                        if mask.any(): 
+                            df_s.loc[mask, 'Cantidad'] -= real_total
+                        else: 
+                            df_s = pd.concat([df_s, pd.DataFrame([{'Cod Producto': row['Cod Producto'], 'Numero de Lote': lote_final, 'Cantidad': -real_total}])], ignore_index=True)
+                        
+                        save_all(df_p, df_s, df_m)
+                        st.rerun()
 
 def vista_consultas():
     c1, c2 = st.columns([1, 4])
