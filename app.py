@@ -10,130 +10,80 @@ from streamlit_gsheets import GSheetsConnection
 #CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
-#DISEÑO 
 def cargar_diseño():
     st.markdown("""
         <style>
-        /* --- PALETA DE COLORES ---
-           Fondo Principal: #1a1a2e (Azul noche profundo)
-           Fondo Secundario: #16213e (Azul grisáceo oscuro)
-           Acento Principal: #c7a008 (Dorado/Bronce elegante)
-           Texto Principal: #e6e6e6 (Blanco roto)
-           Texto Secundario: #a0a0a0 (Gris claro)
-        --------------------------- */
+        /* --- OPCIÓN 2: CARBONO & ESMERALDA --- */
 
         /* FONDO GENERAL */
         .stApp {
-            background-color: #1a1a2e;
-            color: #e6e6e6;
+            background-color: #000000; /* Negro puro para máximo contraste OLED */
+            color: #e0e0e0;
         }
 
-        /* BARRA LATERAL (SIDEBAR) */
+        /* BARRA LATERAL */
         section[data-testid="stSidebar"] {
-            background-color: #16213e;
-            border-right: 1px solid #2a2a4e;
+            background-color: #111111; /* Gris muy oscuro */
+            border-right: 1px solid #333;
         }
 
-        /* TÍTULOS (H1, H2, H3) - Color Dorado Elegante */
+        /* TÍTULOS (Verde Esmeralda Elegante) */
         h1, h2, h3, h4 {
-            color: #c7a008 !important;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        h1 {
-            text-align: center;
-            text-transform: uppercase;
-            margin-bottom: 1.5rem;
-            text-shadow: 0px 2px 4px rgba(0,0,0,0.3); /* Sombra sutil para elegancia */
-        }
-
-        /* BOTONES PERSONALIZADOS */
-        div[data-testid="stButton"] > button {
-            border-radius: 6px; /* Bordes menos redondeados, más serios */
-            font-weight: 600;
-            transition: all 0.3s ease;
-            height: 3em;
+            color: #4caf50 !important; /* Verde Material Design */
+            font-family: 'Segoe UI', Roboto, sans-serif;
             text-transform: uppercase;
             letter-spacing: 1px;
-            font-size: 0.9rem;
+        }
+
+        /* BOTONES */
+        div[data-testid="stButton"] > button {
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
         
-        /* Botón Primario (Dorado) */
+        /* Primario (Verde) */
         div[data-testid="stButton"] > button[kind="primary"] {
-            background-color: #c7a008;
+            background-color: #2e7d32; /* Verde bosque profundo */
             border: none;
-            color: #1a1a2e; /* Texto oscuro sobre fondo dorado para contraste */
+            color: white;
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background-color: #b38f00; /* Dorado un poco más oscuro */
-            box-shadow: 0 4px 12px rgba(199, 160, 8, 0.3); /* Brillo dorado suave */
+            background-color: #1b5e20;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.4); /* Resplandor verde */
         }
 
-        /* Botón Secundario (Fondo oscuro con borde dorado) */
+        /* Secundario (Borde Verde) */
         div[data-testid="stButton"] > button[kind="secondary"] {
             background-color: transparent;
-            border: 2px solid #c7a008;
-            color: #c7a008;
-        }
-        div[data-testid="stButton"] > button[kind="secondary"]:hover {
-            background-color: #c7a008;
-            color: #1a1a2e;
+            border: 1px solid #4caf50;
+            color: #4caf50;
         }
 
-        /* TARJETAS DE MÉTRICAS */
+        /* TARJETAS MÉTRICAS */
         div[data-testid="stMetric"] {
-            background-color: #16213e; /* Fondo secundario */
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid #2a2a4e;
-            border-left: 4px solid #c7a008; /* Acento dorado a la izquierda */
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        div[data-testid="stMetricLabel"] {
-            color: #a0a0a0; /* Etiqueta gris claro */
-            font-size: 1rem;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-left: 4px solid #4caf50; /* Acento verde */
         }
         div[data-testid="stMetricValue"] {
-            color: #ffffff; /* Valor blanco brillante */
-            font-weight: 700;
+            color: #ffffff;
         }
-        
-        /* INPUTS, SELECTBOX Y CHECKBOX (Modo oscuro elegante) */
-        div[data-baseweb="input"] > div, 
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="base-input"] {
-            background-color: #16213e !important; /* Fondo oscuro */
-            color: #e6e6e6 !important;
-            border-color: #2a2a4e !important; /* Borde sutil */
-            border-radius: 6px;
-        }
-        /* Texto dentro de los selects */
-        div[data-baseweb="select"] span {
-            color: #e6e6e6 !important;
-        }
-        /* Color del texto al escribir */
-        input {
-             color: #e6e6e6 !important;
-        }
-        /* Checkbox */
-        label[data-baseweb="checkbox"] > div {
-             background-color: #16213e !important;
-             border-color: #c7a008 !important; # Borde dorado
+        div[data-testid="stMetricLabel"] {
+            color: #9e9e9e;
         }
 
-
-        /* TABLAS (Dataframes) */
-        div[data-testid="stDataFrame"] {
-            border: 1px solid #2a2a4e;
-            border-radius: 8px;
-            overflow: hidden;
+        /* INPUTS */
+        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
+            background-color: #1a1a1a !important;
+            color: white !important;
+            border: 1px solid #333 !important;
         }
         
-        /* DIVISORES */
-        hr {
-            border-color: #2a2a4e;
-        }
+        /* LIMPIEZA */
+        #MainMenu, footer, header {visibility: hidden;}
+        </style>
+    """, unsafe_allow_html=True)
 
         /* LIMPIEZA INTERFAZ */
         #MainMenu {visibility: hidden;}
@@ -578,3 +528,4 @@ elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
+
