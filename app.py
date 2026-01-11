@@ -8,113 +8,156 @@ import re
 from streamlit_gsheets import GSheetsConnection
 
 # --- 1. CONFIGURACIÓN INICIAL ---
-st.set_page_config(page_title="AgroCheck Pro", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="AgroCheck Pro", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
-# --- 2. DISEÑO "PATAGONIA CLEAN" (Minimalista y Profesional) ---
+# --- 2. DISEÑO "NOCHE ESTRELLADA" (Starry Night) 🌌 ---
 def cargar_diseño():
     st.markdown("""
         <style>
-        /* IMPORTAR FUENTES (Inter para interfaz limpia) */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        /* IMPORTAR FUENTES */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@500;700&display=swap');
 
         /* --- VARIABLES DE COLOR --- */
         :root {
-            --primary: #0f4c81; /* Azul Clásico Profundo (Pantone Classic Blue) */
-            --bg-color: #f8fafc; /* Gris muy, muy claro (Casi blanco) */
-            --text-color: #1e293b; /* Gris oscuro elegante */
-            --card-bg: #ffffff;
-            --border: #e2e8f0;
+            --bg-top: #020617;        /* Azul Casi Negro (Cielo arriba) */
+            --bg-bottom: #1e3a8a;     /* Azul Noche Profundo (Horizonte) */
+            --card-bg: #0f172a;       /* Azul Pizarra Oscuro (Tarjetas) */
+            --text-main: #f1f5f9;     /* Blanco Estrella */
+            --gold-star: #fbbf24;     /* Dorado (Botones/Acentos) */
+            --border: #334155;        /* Bordes sutiles */
         }
 
-        /* GENERAL */
+        /* FONDO GENERAL CON DEGRADADO */
         .stApp {
-            background-color: var(--bg-color);
+            /* Degradado sutil que simula el cielo nocturno */
+            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            background-attachment: fixed; /* El fondo se queda fijo al scrollear */
+            color: var(--text-main);
             font-family: 'Inter', sans-serif;
-            color: var(--text-color);
+        }
+
+        /* SIDEBAR (Barra Lateral) */
+        section[data-testid="stSidebar"] {
+            background-color: #0b1120; /* Oscuro sólido */
+            border-right: 1px solid var(--border);
+        }
+        /* Textos del sidebar en blanco */
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3, 
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] div {
+            color: #e2e8f0 !important;
         }
 
         /* TÍTULOS */
         h1, h2, h3 {
-            color: var(--primary) !important;
+            font-family: 'Poppins', sans-serif;
+            color: #ffffff !important;
             font-weight: 700;
-            letter-spacing: -0.5px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* Resplandor suave */
         }
         h1 {
             text-align: center;
             text-transform: uppercase;
-            font-size: 2.2rem;
+            letter-spacing: 2px;
             margin-bottom: 30px;
-            background: -webkit-linear-gradient(45deg, #0f4c81, #1e3a8a);
+            background: linear-gradient(to right, #ffffff, #fbbf24); /* Texto degradado blanco a dorado */
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* TARJETAS (Cards) - LIMPIAS, SIN COLORES DE FONDO RAROS */
+        /* TARJETAS / CONTENEDORES */
         div[data-testid="stVerticalBlockBorderWrapper"] > div {
-            background-color: var(--card-bg);
-            border-radius: 10px;
+            background-color: rgba(15, 23, 42, 0.8); /* Semi-transparente */
             border: 1px solid var(--border);
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Sombra profunda */
+            backdrop-filter: blur(5px); /* Efecto vidrio */
         }
 
-        /* BOTONES - SOBRIOS */
+        /* INPUTS (CAJAS DE TEXTO) - BLANCOS (Tu requisito) */
+        div[data-baseweb="input"] > div, 
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="base-input"] {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 1px solid #94a3b8 !important;
+            border-radius: 8px !important;
+        }
+        input {
+            color: #000000 !important;
+            caret-color: #000000;
+        }
+        /* Texto dentro de los selectbox */
+        div[data-baseweb="select"] span {
+            color: #000000 !important;
+        }
+        /* Labels */
+        label, .stMarkdown p {
+            color: #e2e8f0 !important;
+        }
+
+        /* BOTONES */
         div[data-testid="stButton"] > button {
             border-radius: 8px;
-            font-weight: 600;
-            height: 3em;
+            font-weight: 700;
             border: none;
-            transition: all 0.2s;
+            height: 3em;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-
-        /* Botón Primario (Azul Fuerte) */
+        /* Primario (Dorado Estrella) */
         div[data-testid="stButton"] > button[kind="primary"] {
-            background-color: var(--primary);
-            color: white;
-            box-shadow: 0 4px 6px rgba(15, 76, 129, 0.2);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a; /* Texto oscuro para contraste con el dorado */
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); /* Resplandor dorado */
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background-color: #0c3b66; /* Un poco más oscuro al pasar mouse */
-            transform: translateY(-1px);
+            transform: scale(1.03);
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.6);
         }
-
-        /* Botón Secundario (Blanco con borde sutil) */
+        /* Secundario (Borde Blanco/Azul) */
         div[data-testid="stButton"] > button[kind="secondary"] {
-            background-color: white;
-            border: 1px solid #cbd5e1;
-            color: #334155;
+            background-color: transparent;
+            border: 1px solid #60a5fa;
+            color: #60a5fa;
         }
         div[data-testid="stButton"] > button[kind="secondary"]:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background-color: #f1f5f9;
+            background-color: #60a5fa;
+            color: white;
+            box-shadow: 0 0 10px #60a5fa;
         }
 
-        /* SIDEBAR */
-        section[data-testid="stSidebar"] {
+        /* QR CODE CONTAINER */
+        .qr-box {
             background-color: white;
-            border-right: 1px solid var(--border);
-        }
-
-        /* INPUTS LIMPIOS */
-        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-            background-color: white !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 6px !important;
-        }
-
-        /* CÓDIGO QR */
-        .qr-container {
-            text-align: center;
             padding: 15px;
-            background: white;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Resplandor blanco */
+        }
+        
+        /* TABLAS */
+        div[data-testid="stDataFrame"] {
+            background-color: #0f172a;
             border: 1px solid var(--border);
             border-radius: 10px;
-            margin-bottom: 20px;
         }
 
-        /* OCULTAR MENÚS DEFAULT */
-        #MainMenu, footer, header {visibility: hidden;}
+        /* OCULTAR ELEMENTOS DEFAULT */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
 
@@ -142,13 +185,12 @@ def load_data():
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
-        # Limpieza de espacios
+        # Limpieza
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
         if df_prod.empty: df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
-        
         if 'Fecha_Vencimiento' not in df_stock.columns: df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
         if 'Fecha Hora' in df_mov.columns: df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
@@ -162,39 +204,39 @@ def save_all(df_p, df_s, df_m):
     try:
         conn = get_db_connection()
         conn.update(spreadsheet=SHEET_URL, worksheet="Productos", data=df_p)
-        
         df_s_export = df_s.copy()
         df_s_export['Fecha_Vencimiento'] = df_s_export['Fecha_Vencimiento'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Stock_Real", data=df_s_export)
-        
         df_m_export = df_m.copy()
         df_m_export['Fecha Hora'] = df_m_export['Fecha Hora'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m_export)
         st.cache_data.clear()
-    except Exception as e: st.error(f"Error guardando: {e}")
+    except Exception as e: st.error(f"Error: {e}")
 
-# --- SEMÁFORO (Colores Limpios) ---
 def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    if val < hoy: return 'color: #dc2626; font-weight: bold;' # Rojo texto
-    elif val < alerta: return 'color: #d97706; font-weight: bold;' # Naranja texto
-    else: return 'color: #16a34a; font-weight: bold;' # Verde texto
+    # Colores Neón para resaltar en la noche
+    if val < hoy: return 'color: #ff4545; font-weight: bold; text-shadow: 0 0 5px #ff4545;' # Rojo Neón
+    elif val < alerta: return 'color: #ffd700; font-weight: bold;' # Dorado
+    else: return 'color: #4ade80; font-weight: bold;' # Verde Neón
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 📱 AgroCheck App")
+    st.markdown("### 📱 AgroCheck Mobile")
+    
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
     qr = qrcode.QRCode(version=1, box_size=8, border=0)
     qr.add_data(url_app); qr.make(fit=True)
-    img = qr.make_image(fill_color="#0f4c81", back_color="white") # QR Azul Corporativo
+    img = qr.make_image(fill_color="black", back_color="white") # QR Negro sobre Blanco (Clásico y funcional)
     buf = BytesIO(); img.save(buf, format="PNG")
     
-    st.markdown('<div class="qr-container">', unsafe_allow_html=True)
+    # Caja Blanca para el QR
+    st.markdown('<div class="qr-box">', unsafe_allow_html=True)
     st.image(buf.getvalue(), use_container_width=True)
-    st.caption("Escanear para acceder")
+    st.markdown('<p style="color:black; margin:0; font-weight:bold;">ESCANEAR ACCESO</p>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- VISTAS ---
@@ -206,11 +248,10 @@ def vista_menu():
     c1, c2 = st.columns(2)
     
     with c1:
-        # Aquí quitamos st.info y usamos un contenedor limpio
         with st.container(border=True):
             st.markdown("### 🏢 Oficina Técnica")
-            st.markdown("Gestión de egresos y cargas administrativas.")
-            st.write("") # Espacio
+            st.markdown("Gestión administrativa.")
+            st.write("")
             if st.button("NUEVA ORDEN DE SALIDA", use_container_width=True, type="primary"):
                 st.session_state.vista = "Carga"; st.rerun()
             if st.button("INGRESO DE MERCADERÍA", use_container_width=True):
@@ -219,8 +260,8 @@ def vista_menu():
     with c2:
         with st.container(border=True):
             st.markdown("### 🚜 Depósito / Operativa")
-            st.markdown("Control de inventario y preparación.")
-            st.write("") # Espacio
+            st.markdown("Control de inventario.")
+            st.write("")
             if st.button("ARMAR PEDIDOS", use_container_width=True):
                 st.session_state.vista = "Espera"; st.rerun()
             if st.button("STOCK E HISTORIAL", use_container_width=True):
@@ -244,7 +285,7 @@ def vista_ingreso():
             cod_p = c_new1.text_input("Código Nuevo").strip()
             nom_p_display = c_new2.text_input("Nombre Comercial").strip()
         else:
-            if df_p.empty: st.warning("Sin productos."); cod_p = None
+            if df_p.empty: st.warning("Lista vacía."); cod_p = None
             else:
                 c1, c2 = st.columns(2)
                 cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
@@ -259,20 +300,19 @@ def vista_ingreso():
         fecha_venc = c6.date_input("Vencimiento")
 
     with st.container(border=True):
-        st.markdown("**Calculadora de Cantidad**")
+        st.markdown("**Calculadora**")
         cc1, cc2, cc3 = st.columns(3)
         n1 = cc1.number_input("Cant. Bultos", min_value=0.0)
         n2 = cc2.number_input("Tamaño Unitario", min_value=0.0)
         unidad = cc3.selectbox("Unidad", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
         
-        total_bruto = (n1 or 0) * (n2 or 0)
-        cant_final = total_bruto / 1000 if unidad in ["Gramos", "Cm3 / Ml"] else total_bruto
-        msg_unidad = "Kg/L" if unidad in ["Gramos", "Cm3 / Ml"] else unidad
-        st.metric("Total a Ingresar", f"{cant_final:.2f} {msg_unidad}")
+        total = (n1 or 0) * (n2 or 0)
+        cant_final = total / 1000 if unidad in ["Gramos", "Cm3 / Ml"] else total
+        msg = "Kg/L" if unidad in ["Gramos", "Cm3 / Ml"] else unidad
+        st.metric("Total a Ingresar", f"{cant_final:.2f} {msg}")
 
     if st.button("💾 GUARDAR", type="primary", use_container_width=True):
         if not lote or cant_final <= 0: st.error("Faltan datos."); return
-        
         if es_nuevo:
             df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
 
@@ -338,7 +378,6 @@ def vista_carga():
                 id_ped = f"PED-{int(time.time())}"
                 conn = get_db_connection()
                 df_m_live = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
-                
                 new_rows = []
                 for item in st.session_state.carrito:
                     new_rows.append({'Fecha Hora': datetime.now(), 'ID_Pedido': id_ped, 'Usuario': "Oficina", 'Tipo de movimiento': item['tipo'], 'Cod Producto': item['cod'], 'Cuenta/Entidad': item['cta'], 'Numero de Lote': item['lote_asig'], 'Cantidad': item['cant'] * -1, 'Destino Origen': st.session_state.destino_actual, 'Observaciones': item['det'], 'Estado_Prep': 'PENDIENTE'})
@@ -377,9 +416,7 @@ def vista_espera():
                 l_real = c1.text_input("Lote Real", key=f"l_{idx}")
                 cant_env = c2.number_input("Envases", key=f"c_{idx}")
                 tam_env = c3.number_input("Tam", key=f"t_{idx}")
-                
                 real_total = (cant_env or 0) * (tam_env or 0)
-                if real_total > 0: st.caption(f"Total: {real_total:.2f}")
                 
                 if st.button("Confirmar", key=f"b_{idx}", type="primary"):
                     if l_real and real_total > 0:
@@ -401,9 +438,6 @@ def vista_consultas():
     with t1:
         if not df_s.empty:
             df_view = df_s[df_s['Cantidad'] != 0].copy()
-            
-            # --- LIMPIEZA DE CEROS MOLESTOS (.000000) ---
-            # Convertimos columnas de texto/código a String y borramos el .0
             for col in ['SENASA', 'Cod_Barras', 'Numero de Lote']:
                 if col in df_view.columns:
                     df_view[col] = df_view[col].astype(str).str.replace(r'\.0$', '', regex=True).replace('nan', '')
@@ -412,7 +446,6 @@ def vista_consultas():
                 df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
                 .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}),
                 use_container_width=True, height=600,
-                # Aquí forzamos 2 decimales para la cantidad, eliminando los ceros extra
                 column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f")}
             )
     with t2:
