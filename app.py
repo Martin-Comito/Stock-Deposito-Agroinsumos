@@ -4,72 +4,135 @@ from datetime import datetime, timedelta
 import time
 import qrcode
 from io import BytesIO
-import re
+import re 
 from streamlit_gsheets import GSheetsConnection
 
 #CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
-# Diseño css
+#DISEÑO 
 def cargar_diseño():
     st.markdown("""
         <style>
+        /* --- PALETA DE COLORES ---
+           Fondo Principal: #1a1a2e (Azul noche profundo)
+           Fondo Secundario: #16213e (Azul grisáceo oscuro)
+           Acento Principal: #c7a008 (Dorado/Bronce elegante)
+           Texto Principal: #e6e6e6 (Blanco roto)
+           Texto Secundario: #a0a0a0 (Gris claro)
+        --------------------------- */
+
         /* FONDO GENERAL */
         .stApp {
-            background-color: #f4f6f9;
+            background-color: #1a1a2e;
+            color: #e6e6e6;
         }
 
-        /* TÍTULOS */
-        h1, h2, h3 {
-            color: #2e7d32; /* Verde Agro */
+        /* BARRA LATERAL (SIDEBAR) */
+        section[data-testid="stSidebar"] {
+            background-color: #16213e;
+            border-right: 1px solid #2a2a4e;
+        }
+
+        /* TÍTULOS (H1, H2, H3) - Color Dorado Elegante */
+        h1, h2, h3, h4 {
+            color: #c7a008 !important;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             font-weight: 700;
+            letter-spacing: 0.5px;
         }
         h1 {
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.3); /* Sombra sutil para elegancia */
         }
 
         /* BOTONES PERSONALIZADOS */
         div[data-testid="stButton"] > button {
-            border-radius: 8px;
+            border-radius: 6px; /* Bordes menos redondeados, más serios */
             font-weight: 600;
             transition: all 0.3s ease;
             height: 3em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
         }
-        /* Botón Primario */
+        
+        /* Botón Primario (Dorado) */
         div[data-testid="stButton"] > button[kind="primary"] {
-            background-color: #2e7d32;
+            background-color: #c7a008;
             border: none;
-            color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            color: #1a1a2e; /* Texto oscuro sobre fondo dorado para contraste */
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background-color: #1b5e20;
-            transform: translateY(-2px);
+            background-color: #b38f00; /* Dorado un poco más oscuro */
+            box-shadow: 0 4px 12px rgba(199, 160, 8, 0.3); /* Brillo dorado suave */
         }
-        /* Botón Secundario */
+
+        /* Botón Secundario (Fondo oscuro con borde dorado) */
         div[data-testid="stButton"] > button[kind="secondary"] {
-            background-color: #ffffff;
-            border: 1px solid #2e7d32;
-            color: #2e7d32;
+            background-color: transparent;
+            border: 2px solid #c7a008;
+            color: #c7a008;
         }
         div[data-testid="stButton"] > button[kind="secondary"]:hover {
-            background-color: #e8f5e9;
+            background-color: #c7a008;
+            color: #1a1a2e;
         }
 
         /* TARJETAS DE MÉTRICAS */
         div[data-testid="stMetric"] {
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 15px;
-            border-left: 5px solid #2e7d32;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+            background-color: #16213e; /* Fondo secundario */
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #2a2a4e;
+            border-left: 4px solid #c7a008; /* Acento dorado a la izquierda */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        div[data-testid="stMetricLabel"] {
+            color: #a0a0a0; /* Etiqueta gris claro */
+            font-size: 1rem;
         }
         div[data-testid="stMetricValue"] {
-            color: #1b5e20;
+            color: #ffffff; /* Valor blanco brillante */
+            font-weight: 700;
+        }
+        
+        /* INPUTS, SELECTBOX Y CHECKBOX (Modo oscuro elegante) */
+        div[data-baseweb="input"] > div, 
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="base-input"] {
+            background-color: #16213e !important; /* Fondo oscuro */
+            color: #e6e6e6 !important;
+            border-color: #2a2a4e !important; /* Borde sutil */
+            border-radius: 6px;
+        }
+        /* Texto dentro de los selects */
+        div[data-baseweb="select"] span {
+            color: #e6e6e6 !important;
+        }
+        /* Color del texto al escribir */
+        input {
+             color: #e6e6e6 !important;
+        }
+        /* Checkbox */
+        label[data-baseweb="checkbox"] > div {
+             background-color: #16213e !important;
+             border-color: #c7a008 !important; # Borde dorado
+        }
+
+
+        /* TABLAS (Dataframes) */
+        div[data-testid="stDataFrame"] {
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        /* DIVISORES */
+        hr {
+            border-color: #2a2a4e;
         }
 
         /* LIMPIEZA INTERFAZ */
@@ -79,7 +142,7 @@ def cargar_diseño():
         </style>
     """, unsafe_allow_html=True)
 
-# Activa el diseño
+# Activacion del diseño
 cargar_diseño()
 
 #BASE DE DATOS
@@ -120,7 +183,6 @@ def load_data():
             df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
         
-        # Aseguramos que Fecha Hora sea datetime para poder ordenarla
         if 'Fecha Hora' in df_mov.columns:
             df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
         
@@ -141,7 +203,7 @@ def save_all(df_p, df_s, df_m):
         df_s_export['Fecha_Vencimiento'] = df_s_export['Fecha_Vencimiento'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Stock_Real", data=df_s_export)
         
-        #Convierte fecha de movimientos a string antes de guardar para evitar problemas
+        # Convercion de fecha de movimientos a string antes de guardar
         df_m_export = df_m.copy()
         df_m_export['Fecha Hora'] = df_m_export['Fecha Hora'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m_export)
@@ -150,27 +212,30 @@ def save_all(df_p, df_s, df_m):
     except Exception as e:
         st.error(f"Error al guardar en la nube: {e}")
 
+#SEMÁFORO AJUSTADO A LA PALETA DE COLORES
 def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    if val < hoy: return 'background-color: #ff4b4b; color: white'
-    elif val < alerta: return 'background-color: #ffd700; color: black'
-    else: return 'background-color: #90ee90; color: black'
+    if val < hoy: return 'background-color: #691d1d; color: white' # Rojo Rubí Profundo
+    elif val < alerta: return 'background-color: #7f6000; color: white' # Dorado/Ámbar Oscuro
+    else: return 'background-color: #1b4629; color: white' # Verde Esmeralda Profundo
 
 #SIDEBAR
 with st.sidebar:
     st.title("📲 Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
+    # QR con fondo blanco para contraste
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
     qr.add_data(url_app); qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
+    img = qr.make_image(fill_color="black", back_color="white") 
     buf = BytesIO(); img.save(buf, format="PNG")
+    
     st.image(buf.getvalue(), caption="Escanear para conectar")
-    st.caption("Desarrollado con Python & Streamlit")
+    st.info("Sistema optimizado. Interfaz sombría y elegante.")
 
-#VISTAS
+# VISTAS
 
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
@@ -188,7 +253,7 @@ def vista_menu():
             st.session_state.vista = "Consultas"; st.rerun()
 
 def vista_ingreso():
-    if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Ingreso de Stock")
     df_p, df_s, df_m = load_data()
     
@@ -210,7 +275,6 @@ def vista_ingreso():
         cod_p = cod_p_input.strip()
         nom_p_display = nom_p_input.strip()
     else:
-        # Selección normal
         if df_p.empty:
             st.warning("No hay productos. Marca la casilla de arriba para crear uno.")
             cod_p = None
@@ -265,13 +329,11 @@ def vista_ingreso():
                 st.error("¡Ese código ya existe! Úsalo desde la lista o cambia el código."); error = True
         
         if not error:
-            # 1. Alta de Producto (si aplica)
             if es_nuevo:
                 new_prod_row = {'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}
                 df_p = pd.concat([df_p, pd.DataFrame([new_prod_row])], ignore_index=True)
                 st.toast(f"Producto '{nom_p_display}' creado!")
 
-            # 2. Guardar Stock
             mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
             fecha_venc_dt = pd.to_datetime(fecha_venc)
 
@@ -282,7 +344,6 @@ def vista_ingreso():
                 new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
                 df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
             
-            # 3. Guardar Movimiento
             obs_detalle = f"Ingreso: {val_n1} envases de {val_n2} {unidad}"
             if es_nuevo: obs_detalle += " (ALTA DE PRODUCTO)"
             cta_mov = "Stock Inicial" if es_nuevo else (locals().get('cuenta') or "")
@@ -299,7 +360,7 @@ def vista_ingreso():
             st.success(f"Guardado exitosamente: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
 
 def vista_carga():
-    if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Nueva Orden de Egreso (Oficina)")
     df_p, df_s, _ = load_data()
     
@@ -324,7 +385,7 @@ def vista_carga():
         lote_selec = None; stock_disp = 0
     else:
         stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
-        # La cantidad se vera con 2 decimales
+        #Solo 2 decimales
         opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
         lote_str = st.selectbox("Lote a utilizar", opciones_lote)
         lote_selec = lote_str.split(" (")[0]
@@ -341,7 +402,7 @@ def vista_carga():
     total_a_pedir = v_cb * v_tb
     cc3.metric("Total Solicitado", f"{total_a_pedir:.2f}")
 
-    if st.button("AGREGAR AL PEDIDO"):
+    if st.button("AGREGAR AL PEDIDO", type="primary"):
         if not lote_selec: st.error("Debe seleccionar un lote con stock.")
         elif total_a_pedir <= 0: st.error("La cantidad debe ser mayor a 0.")
         else:
@@ -378,7 +439,7 @@ def vista_carga():
             else: st.error("Falta el Destino")
 
 def vista_espera():
-    if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("⬅️ Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Armado de Pedidos (Depósito)")
     df_p, df_s, df_m = load_data()
     
@@ -435,7 +496,7 @@ def vista_espera():
 
                     obs_deposito = st.text_input("Obs (Obligatorio si hay cambios)", key=f"obs_{idx}")
                     
-                    if st.button(f"Confirmar {prod_nom}", key=f"btn_{idx}"):
+                    if st.button(f"Confirmar {prod_nom}", key=f"btn_{idx}", type="primary"):
                         error = False
                         if not lote_real: st.error("Debe ingresar el Lote Real."); error = True
                         if alerta_stock and len(obs_deposito) < 3: st.error("Falta observación."); error = True
@@ -458,7 +519,7 @@ def vista_espera():
                             st.success("Item Confirmado"); time.sleep(1); st.rerun()
 
 def vista_consultas():
-    if st.button("⬅️ Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("⬅️ Volver al Menú Principal", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Semáforo de Vencimientos y Stock")
     df_p, df_s, df_m = load_data()
     t1, t2 = st.tabs(["STOCK & VENCIMIENTOS", "MOVIMIENTOS"])
@@ -468,7 +529,7 @@ def vista_consultas():
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
             
-            # LIMPIEZA DE CÓDIGOS
+            #LIMPIEZA DE CÓDIGOS (Eliminar .0 al final)
             cols_to_clean = ['SENASA', 'Cod_Barras', 'Numero de Lote']
             for col in cols_to_clean:
                 if col in df_view.columns:
@@ -498,12 +559,12 @@ def vista_consultas():
             st.dataframe(
                 df_m.sort_values(by='Fecha Hora', ascending=False), 
                 use_container_width=True,
-                height=800, 
+                height=800,
                 column_config={
                     "Fecha Hora": st.column_config.DatetimeColumn("Fecha", format="D MMM YYYY, h:mm a"),
                     "Cantidad": st.column_config.NumberColumn(format="%.2f"),
                     "ID_Pedido": st.column_config.TextColumn("ID", width="medium"),
-                    "Observaciones": st.column_config.TextColumn("Observaciones", width="large"), 
+                    "Observaciones": st.column_config.TextColumn("Observaciones", width="large"),
                     "Cod Producto": st.column_config.TextColumn("Producto", width="medium"),
                     "Numero de Lote": st.column_config.TextColumn("Lote"),
                 }
@@ -511,7 +572,7 @@ def vista_consultas():
         else:
             st.dataframe(df_m, use_container_width=True)
 
-#Router
+# Router
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
