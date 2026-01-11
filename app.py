@@ -10,135 +10,114 @@ from streamlit_gsheets import GSheetsConnection
 # --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="AgroCheck Pro", layout="wide", initial_sidebar_state="expanded")
 
-# --- 2. CAPA DE DISEÑO (ESTILO INDUSTRIAL CLEAN / SAAS) ---
+# --- 2. DISEÑO "PATAGONIA CLEAN" (Minimalista y Profesional) ---
 def cargar_diseño():
     st.markdown("""
         <style>
-        /* IMPORTAR FUENTES MODERNAS (Google Fonts) */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap');
+        /* IMPORTAR FUENTES (Inter para interfaz limpia) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
-        /* --- VARIABLES DE COLOR (Tema Stripe/SaaS) --- */
+        /* --- VARIABLES DE COLOR --- */
         :root {
-            --primary-color: #2563eb; /* Azul Royal Moderno */
-            --primary-hover: #1d4ed8;
-            --background-color: #f1f5f9; /* Gris azulado muy pálido (Slate 100) */
+            --primary: #0f4c81; /* Azul Clásico Profundo (Pantone Classic Blue) */
+            --bg-color: #f8fafc; /* Gris muy, muy claro (Casi blanco) */
+            --text-color: #1e293b; /* Gris oscuro elegante */
             --card-bg: #ffffff;
-            --text-dark: #0f172a; /* Slate 900 (Casi negro) */
-            --text-medium: #334155; /* Slate 700 */
-            --border-color: #e2e8f0;
+            --border: #e2e8f0;
         }
 
-        /* --- ESTILOS GENERALES --- */
+        /* GENERAL */
         .stApp {
-            background-color: var(--background-color);
+            background-color: var(--bg-color);
             font-family: 'Inter', sans-serif;
-            color: var(--text-dark);
+            color: var(--text-color);
         }
 
         /* TÍTULOS */
         h1, h2, h3 {
-            font-family: 'Poppins', sans-serif;
-            color: var(--text-dark) !important;
+            color: var(--primary) !important;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
         h1 {
+            text-align: center;
             text-transform: uppercase;
-            background: linear-gradient(90deg, #1e293b, #334155);
+            font-size: 2.2rem;
+            margin-bottom: 30px;
+            background: -webkit-linear-gradient(45deg, #0f4c81, #1e3a8a);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 1.5rem;
-            text-align: center;
         }
 
-        /* --- TARJETAS (CARD UI) --- */
-        /* Convertimos los bloques de Streamlit en tarjetas flotantes */
-        div[data-testid="stMetric"], div[data-testid="stDataFrame"], .stForm {
-            background-color: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-        }
-        
-        /* Contenedores generales (border=True de Streamlit) */
+        /* TARJETAS (Cards) - LIMPIAS, SIN COLORES DE FONDO RAROS */
         div[data-testid="stVerticalBlockBorderWrapper"] > div {
             background-color: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
-        /* --- BOTONES MODERNOS --- */
+        /* BOTONES - SOBRIOS */
         div[data-testid="stButton"] > button {
             border-radius: 8px;
-            font-family: 'Inter', sans-serif;
             font-weight: 600;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease-in-out;
-            border: none;
             height: 3em;
+            border: none;
+            transition: all 0.2s;
         }
 
-        /* Botón Primario (Azul SaaS) */
+        /* Botón Primario (Azul Fuerte) */
         div[data-testid="stButton"] > button[kind="primary"] {
-            background-color: var(--primary-color);
+            background-color: var(--primary);
             color: white;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 4px 6px rgba(15, 76, 129, 0.2);
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background-color: var(--primary-hover);
+            background-color: #0c3b66; /* Un poco más oscuro al pasar mouse */
             transform: translateY(-1px);
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
         }
 
-        /* Botón Secundario (Blanco limpio) */
+        /* Botón Secundario (Blanco con borde sutil) */
         div[data-testid="stButton"] > button[kind="secondary"] {
             background-color: white;
-            color: var(--text-medium);
-            border: 1px solid var(--border-color);
+            border: 1px solid #cbd5e1;
+            color: #334155;
         }
         div[data-testid="stButton"] > button[kind="secondary"]:hover {
-            background-color: #f8fafc;
-            border-color: #94a3b8;
-            color: var(--primary-color);
+            border-color: var(--primary);
+            color: var(--primary);
+            background-color: #f1f5f9;
         }
 
-        /* --- SIDEBAR --- */
+        /* SIDEBAR */
         section[data-testid="stSidebar"] {
-            background-color: #ffffff;
-            border-right: 1px solid var(--border-color);
-        }
-        
-        /* --- QR CONTAINER (Resaltado) --- */
-        .qr-container {
             background-color: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            margin-bottom: 20px;
-            margin-top: 10px;
+            border-right: 1px solid var(--border);
         }
 
-        /* --- INPUTS --- */
+        /* INPUTS LIMPIOS */
         div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-            background-color: #ffffff !important;
+            background-color: white !important;
             border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            color: var(--text-dark) !important;
+            border-radius: 6px !important;
         }
-        input { color: var(--text-dark) !important; }
-        
-        /* Ocultar elementos default */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+
+        /* CÓDIGO QR */
+        .qr-container {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* OCULTAR MENÚS DEFAULT */
+        #MainMenu, footer, header {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
 
-# Activamos el diseño
 cargar_diseño()
 
 # ---------------------------------------------------------
@@ -146,11 +125,11 @@ cargar_diseño()
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
 # ---------------------------------------------------------
 
-# --- CONEXIÓN GOOGLE SHEETS ---
+# --- CONEXIÓN ---
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-# --- ESTADO DE SESIÓN ---
+# --- ESTADO ---
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
@@ -163,30 +142,21 @@ def load_data():
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
+        # Limpieza de espacios
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
         if df_prod.empty: df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
         
-        if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
-            st.error(f"⚠️ Error: No encuentro 'Cod Producto'.")
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
-        if 'Fecha_Vencimiento' not in df_stock.columns:
-            df_stock['Fecha_Vencimiento'] = None
+        if 'Fecha_Vencimiento' not in df_stock.columns: df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
-        
-        if 'Fecha Hora' in df_mov.columns:
-            df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
+        if 'Fecha Hora' in df_mov.columns: df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
         
         return df_prod, df_stock, df_mov
     except Exception as e:
-        if "Quota exceeded" in str(e):
-            st.warning("⚠️ Google está pidiendo un respiro. Espera 10 segundos y recarga.")
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-        st.error(f"Error cargando datos: {e}")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        if "Quota exceeded" in str(e): st.warning("⚠️ Espera unos segundos..."); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        st.error(f"Error: {e}"); return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 def save_all(df_p, df_s, df_m):
     try:
@@ -200,38 +170,32 @@ def save_all(df_p, df_s, df_m):
         df_m_export = df_m.copy()
         df_m_export['Fecha Hora'] = df_m_export['Fecha Hora'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m_export)
-        
         st.cache_data.clear()
-    except Exception as e:
-        st.error(f"Error al guardar en la nube: {e}")
+    except Exception as e: st.error(f"Error guardando: {e}")
 
+# --- SEMÁFORO (Colores Limpios) ---
 def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    # Colores SaaS (Flat UI colors)
-    if val < hoy: return 'background-color: #fee2e2; color: #b91c1c; font-weight: 600;' # Rojo suave
-    elif val < alerta: return 'background-color: #fef3c7; color: #b45309; font-weight: 600;' # Ambar
-    else: return 'background-color: #dcfce7; color: #15803d; font-weight: 600;' # Verde Esmeralda
+    if val < hoy: return 'color: #dc2626; font-weight: bold;' # Rojo texto
+    elif val < alerta: return 'color: #d97706; font-weight: bold;' # Naranja texto
+    else: return 'color: #16a34a; font-weight: bold;' # Verde texto
 
-# --- SIDEBAR (CON QR MEJORADO) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 📱 **AgroCheck Mobile**")
+    st.markdown("### 📱 AgroCheck App")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
-    # Generamos QR
-    qr = qrcode.QRCode(version=1, box_size=8, border=1)
+    qr = qrcode.QRCode(version=1, box_size=8, border=0)
     qr.add_data(url_app); qr.make(fit=True)
-    img = qr.make_image(fill_color="#1e293b", back_color="white")
+    img = qr.make_image(fill_color="#0f4c81", back_color="white") # QR Azul Corporativo
     buf = BytesIO(); img.save(buf, format="PNG")
     
-    # Contenedor especial para el QR
     st.markdown('<div class="qr-container">', unsafe_allow_html=True)
-    st.image(buf.getvalue(), caption="Escanear Acceso", use_container_width=True)
+    st.image(buf.getvalue(), use_container_width=True)
+    st.caption("Escanear para acceder")
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.caption("v2.0 Industrial Build")
 
 # --- VISTAS ---
 
@@ -242,8 +206,11 @@ def vista_menu():
     c1, c2 = st.columns(2)
     
     with c1:
+        # Aquí quitamos st.info y usamos un contenedor limpio
         with st.container(border=True):
-            st.info("🏢 **Oficina Técnica**")
+            st.markdown("### 🏢 Oficina Técnica")
+            st.markdown("Gestión de egresos y cargas administrativas.")
+            st.write("") # Espacio
             if st.button("NUEVA ORDEN DE SALIDA", use_container_width=True, type="primary"):
                 st.session_state.vista = "Carga"; st.rerun()
             if st.button("INGRESO DE MERCADERÍA", use_container_width=True):
@@ -251,152 +218,126 @@ def vista_menu():
             
     with c2:
         with st.container(border=True):
-            st.success("📦 **Depósito / Operativa**")
+            st.markdown("### 🚜 Depósito / Operativa")
+            st.markdown("Control de inventario y preparación.")
+            st.write("") # Espacio
             if st.button("ARMAR PEDIDOS", use_container_width=True):
                 st.session_state.vista = "Espera"; st.rerun()
             if st.button("STOCK E HISTORIAL", use_container_width=True):
                 st.session_state.vista = "Consultas"; st.rerun()
 
 def vista_ingreso():
-    c_head1, c_head2 = st.columns([1, 4])
-    with c_head1:
+    c1, c2 = st.columns([1, 4])
+    with c1:
         if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
-    with c_head2:
-        st.subheader("Ingreso de Stock")
-        
+    with c2: st.subheader("Ingreso de Stock")
+
     df_p, df_s, df_m = load_data()
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict() if not df_p.empty else {}
 
-    # Tarjeta de Alta
     with st.container(border=True):
         col_switch, _ = st.columns([2,1])
-        es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO? (Alta Rápida)")
+        es_nuevo = col_switch.checkbox("➕ ¿Producto NUEVO?")
 
         if es_nuevo:
-            st.markdown("##### 🆕 Alta de Producto")
             c_new1, c_new2 = st.columns(2)
-            cod_p = c_new1.text_input("Definir Nuevo Código", placeholder="Ej: FUNG_NUEVO").strip()
-            nom_p_display = c_new2.text_input("Nombre Comercial", placeholder="Ej: Fungicida Nuevo 5L").strip()
+            cod_p = c_new1.text_input("Código Nuevo").strip()
+            nom_p_display = c_new2.text_input("Nombre Comercial").strip()
         else:
-            if df_p.empty:
-                st.warning("No hay productos."); cod_p = None
+            if df_p.empty: st.warning("Sin productos."); cod_p = None
             else:
                 c1, c2 = st.columns(2)
-                cod_p = c1.selectbox("Producto Existente", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
+                cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
                 nom_p_display = prod_map.get(cod_p, '')
                 cuenta = c2.text_input("Cuenta / Propiedad")
 
         st.markdown("---")
-        st.markdown("##### 🏷️ Datos del Lote")
         c3, c4, c5, c6 = st.columns(4)
         lote = c3.text_input("N° Lote")
         senasa = c4.text_input("SENASA")
         cod_barra = c5.text_input("GTIN/Cod Barra")
-        fecha_venc = c6.date_input("Fecha Vencimiento")
+        fecha_venc = c6.date_input("Vencimiento")
 
-    # Tarjeta Calculadora
     with st.container(border=True):
-        st.markdown("##### 🧮 Calculadora de Cantidad")
-        col_calc1, col_calc2, col_calc3 = st.columns(3)
-        n1 = col_calc1.number_input("Cant. Bultos", min_value=0.0, placeholder="0")
-        n2 = col_calc2.number_input("Tamaño Unitario", min_value=0.0, placeholder="0")
-        unidad = col_calc3.selectbox("Unidad", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
+        st.markdown("**Calculadora de Cantidad**")
+        cc1, cc2, cc3 = st.columns(3)
+        n1 = cc1.number_input("Cant. Bultos", min_value=0.0)
+        n2 = cc2.number_input("Tamaño Unitario", min_value=0.0)
+        unidad = cc3.selectbox("Unidad", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
         
-        val_n1 = n1 if n1 else 0.0; val_n2 = n2 if n2 else 0.0
-        total_bruto = val_n1 * val_n2
-        
-        if unidad in ["Gramos", "Cm3 / Ml"]: cant_final = total_bruto / 1000; msg_unidad = "Kg/L"
-        else: cant_final = total_bruto; msg_unidad = unidad
+        total_bruto = (n1 or 0) * (n2 or 0)
+        cant_final = total_bruto / 1000 if unidad in ["Gramos", "Cm3 / Ml"] else total_bruto
+        msg_unidad = "Kg/L" if unidad in ["Gramos", "Cm3 / Ml"] else unidad
+        st.metric("Total a Ingresar", f"{cant_final:.2f} {msg_unidad}")
 
-        st.metric(label=f"Total a Ingresar ({msg_unidad})", value=f"{cant_final:.2f}")
-
-    if st.button("💾 GUARDAR INGRESO", type="primary", use_container_width=True):
-        error = False
-        if not lote or cant_final <= 0: st.error("❌ Faltan datos."); error = True
+    if st.button("💾 GUARDAR", type="primary", use_container_width=True):
+        if not lote or cant_final <= 0: st.error("Faltan datos."); return
         
         if es_nuevo:
-            if not cod_p or not nom_p_display: st.error("❌ Datos incompletos."); error = True
-            elif cod_p in prod_map: st.error("❌ El código ya existe."); error = True
+            df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
+
+        mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
+        fecha_venc_dt = pd.to_datetime(fecha_venc)
+
+        if mask.any():
+            df_s.loc[mask, 'Cantidad'] += cant_final
+            df_s.loc[mask, 'Fecha_Vencimiento'] = fecha_venc_dt
+        else:
+            new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
+            df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
         
-        if not error:
-            if es_nuevo:
-                df_p = pd.concat([df_p, pd.DataFrame([{'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}])], ignore_index=True)
-                st.toast(f"Producto '{nom_p_display}' creado!")
-
-            mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
-            fecha_venc_dt = pd.to_datetime(fecha_venc)
-
-            if mask.any():
-                df_s.loc[mask, 'Cantidad'] += cant_final
-                df_s.loc[mask, 'Fecha_Vencimiento'] = fecha_venc_dt
-            else:
-                new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
-                df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
-            
-            obs = f"Ingreso: {val_n1} x {val_n2} {unidad}" + (" (ALTA)" if es_nuevo else "")
-            mov = {'Fecha Hora': datetime.now(), 'ID_Pedido': "INGRESO", 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 'Cuenta/Entidad': locals().get('cuenta', ''), 'Numero de Lote': lote, 'Cantidad': cant_final, 'Destino Origen': "Depósito", 'Observaciones': obs, 'Estado_Prep': 'TERMINADO'}
-            
-            df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
-            save_all(df_p, df_s, df_m)
-            st.success(f"✅ Guardado: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
+        obs = f"Ingreso: {n1} x {n2} {unidad}"
+        mov = {'Fecha Hora': datetime.now(), 'ID_Pedido': "INGRESO", 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 'Cuenta/Entidad': locals().get('cuenta', ''), 'Numero de Lote': lote, 'Cantidad': cant_final, 'Destino Origen': "Depósito", 'Observaciones': obs, 'Estado_Prep': 'TERMINADO'}
+        
+        df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
+        save_all(df_p, df_s, df_m)
+        st.success("Guardado!"); time.sleep(1); st.session_state.vista="Menu"; st.rerun()
 
 def vista_carga():
-    c_head1, c_head2 = st.columns([1, 4])
-    with c_head1:
+    c1, c2 = st.columns([1, 4])
+    with c1:
         if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
-    with c_head2:
-        st.subheader("Nueva Orden de Egreso")
+    with c2: st.subheader("Nueva Orden de Salida")
 
     df_p, df_s, _ = load_data()
-    if df_p.empty: st.warning("Error leyendo productos."); return
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
     with st.container(border=True):
         c1, c2 = st.columns(2)
         st.session_state.destino_actual = c1.text_input("Destino / Cliente:", value=st.session_state.destino_actual)
-        cuenta = c2.text_input("Cuenta a Descontar:")
+        cuenta = c2.text_input("Cuenta:")
 
     with st.container(border=True):
-        col_a, col_b = st.columns([2, 1])
-        sel_prod = col_a.selectbox("Seleccionar Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x,'')}")
-        tipo_op = col_b.selectbox("Tipo Movimiento", ["Venta", "Transferencia", "Uso Interno"])
+        c_prod, c_type = st.columns([2, 1])
+        sel_prod = c_prod.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x,'')}")
+        tipo_op = c_type.selectbox("Motivo", ["Venta", "Transferencia", "Uso Interno"])
 
         stock_prod = df_s[df_s['Cod Producto'] == sel_prod].copy()
-        
-        if stock_prod.empty:
-            st.error("⚠️ No hay stock registrado.")
-            lote_selec = None; stock_disp = 0
+        if stock_prod.empty: st.warning("Sin stock"); lote_selec = None
         else:
             stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
-            opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
-            lote_str = st.selectbox("Lote de Origen", opciones_lote)
+            opciones = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
+            lote_str = st.selectbox("Seleccionar Lote", opciones)
             lote_selec = lote_str.split(" (")[0]
-            stock_disp = stock_prod[stock_prod['Numero de Lote'] == lote_selec]['Cantidad'].values[0]
 
-        st.markdown("---")
         cc1, cc2, cc3 = st.columns(3)
-        cant_bultos = cc1.number_input("Cant. Envases", min_value=0.0, placeholder="0")
-        tam_bultos = cc2.number_input("Litros/Kg por Envase", value=None, placeholder="0")
-        
-        v_cb = cant_bultos if cant_bultos else 0.0; v_tb = tam_bultos if tam_bultos else 0.0
-        total_a_pedir = v_cb * v_tb
-        cc3.metric("Total Solicitado", f"{total_a_pedir:.2f}")
+        n1 = cc1.number_input("Cant. Envases", min_value=0.0)
+        n2 = cc2.number_input("Lts/Kg Envase", min_value=0.0)
+        total = (n1 or 0) * (n2 or 0)
+        cc3.metric("Total Salida", f"{total:.2f}")
 
     if st.button("➕ AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
-        if not lote_selec or total_a_pedir <= 0: st.error("Verifique lote y cantidad.")
-        else:
-            if total_a_pedir > stock_disp: st.warning(f"⚠️ Stock insuficiente (Hay {stock_disp})")
-            st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total_a_pedir, "lote_asig": lote_selec, "det": f"{v_cb} env x {v_tb}", "tipo": tipo_op, "cta": cuenta})
+        if lote_selec and total > 0:
+            st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total, "lote_asig": lote_selec, "det": f"{n1} env x {n2}", "tipo": tipo_op, "cta": cuenta})
 
     if st.session_state.carrito:
-        st.markdown("### 🛒 Carrito")
+        st.markdown("##### 🛒 Carrito")
         st.table(pd.DataFrame(st.session_state.carrito))
-        if st.button("✅ CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary", use_container_width=True):
+        if st.button("✅ CONFIRMAR Y ENVIAR", type="primary", use_container_width=True):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
                 conn = get_db_connection()
                 df_m_live = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
-                if not df_m_live.empty: df_m_live.columns = df_m_live.columns.str.strip()
                 
                 new_rows = []
                 for item in st.session_state.carrito:
@@ -404,75 +345,55 @@ def vista_carga():
                 
                 df_m_live = pd.concat([df_m_live, pd.DataFrame(new_rows)], ignore_index=True)
                 save_all(df_p, df_s, df_m_live)
-                st.session_state.carrito = []; st.success("✅ Orden enviada."); time.sleep(1); st.rerun()
-            else: st.error("❌ Falta el Destino")
+                st.session_state.carrito = []; st.success("Enviado!"); time.sleep(1); st.rerun()
+            else: st.error("Falta Destino")
 
 def vista_espera():
-    c_head1, c_head2 = st.columns([1, 4])
-    with c_head1:
+    c1, c2 = st.columns([1, 4])
+    with c1:
         if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
-    with c_head2:
-        st.subheader("Armado de Pedidos")
+    with c2: st.subheader("Armado de Pedidos")
 
     df_p, df_s, df_m = load_data()
-    if df_p.empty or df_m.empty: st.info("Cargando..."); return
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
-
-    if 'Estado_Prep' not in df_m.columns: st.error("Error columnas."); return
+    
     pendientes = df_m[df_m['Estado_Prep'] == 'PENDIENTE'].copy()
-    if pendientes.empty: st.info("✅ No hay pedidos pendientes."); return
+    if pendientes.empty: st.info("No hay pendientes."); return
 
-    lista_pedidos = pendientes['ID_Pedido'].unique()
-    pedido_selec = st.selectbox("Seleccionar Pedido a Armar", lista_pedidos)
+    ped_id = st.selectbox("Seleccionar Pedido", pendientes['ID_Pedido'].unique())
+    items = pendientes[pendientes['ID_Pedido'] == ped_id]
+    st.info(f"Cliente: **{items.iloc[0]['Destino Origen']}**")
 
-    if pedido_selec:
-        items = pendientes[pendientes['ID_Pedido'] == pedido_selec]
-        st.info(f"📍 Destino: **{items.iloc[0]['Destino Origen']}**")
-        
-        for idx, row in items.iterrows():
-            with st.container(border=True):
-                col_info, col_accion = st.columns([1, 2])
-                cant_pedida = abs(row['Cantidad'])
+    for idx, row in items.iterrows():
+        with st.container(border=True):
+            c_info, c_action = st.columns([1, 2])
+            with c_info:
+                st.markdown(f"**{prod_map.get(row['Cod Producto'], row['Cod Producto'])}**")
+                st.caption(f"Lote: {row['Numero de Lote']}")
+                st.markdown(f"Cant: **{abs(row['Cantidad']):.2f}**")
+            
+            with c_action:
+                c1, c2, c3 = st.columns(3)
+                l_real = c1.text_input("Lote Real", key=f"l_{idx}")
+                cant_env = c2.number_input("Envases", key=f"c_{idx}")
+                tam_env = c3.number_input("Tam", key=f"t_{idx}")
                 
-                with col_info:
-                    st.markdown(f"**{prod_map.get(row['Cod Producto'], row['Cod Producto'])}**")
-                    st.caption(f"Lote Pedido: {row['Numero de Lote']}")
-                    st.markdown(f"📦 Cant: **{cant_pedida:.2f}**")
-
-                with col_accion:
-                    c_lote, c_cant1, c_cant2 = st.columns(3)
-                    lote_real = c_lote.text_input("Lote Real", value="", key=f"l_{idx}")
-                    cant_env = c_cant1.number_input("Envases", min_value=0.0, key=f"ce_{idx}")
-                    tam_env = c_cant2.number_input("Tamaño", key=f"te_{idx}")
-                    
-                    cant_real = (cant_env or 0) * (tam_env or 0)
-                    if cant_real > 0: st.write(f"Real: **{cant_real:.2f}**")
-                    
-                    obs_dep = st.text_input("Observaciones", key=f"obs_{idx}")
-                    
-                    if st.button("✅ Confirmar Item", key=f"btn_{idx}", type="primary"):
-                        if lote_real and cant_real > 0:
-                            lote_final = lote_real.strip().upper()
-                            df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'
-                            df_m.loc[idx, 'Numero de Lote'] = lote_final
-                            df_m.loc[idx, 'Cantidad'] = cant_real * -1
-                            df_m.loc[idx, 'Observaciones'] = f"{row['Observaciones']} | {obs_dep}"
-                            
-                            mask_stock = (df_s['Cod Producto'] == row['Cod Producto']) & (df_s['Numero de Lote'] == lote_final)
-                            if mask_stock.any(): df_s.loc[mask_stock, 'Cantidad'] -= cant_real
-                            else:
-                                new_stk = {'Cod Producto': row['Cod Producto'], 'Numero de Lote': lote_final, 'Cantidad': -cant_real}
-                                df_s = pd.concat([df_s, pd.DataFrame([new_stk])], ignore_index=True)
-                            
-                            save_all(df_p, df_s, df_m); st.rerun()
-                        else: st.error("Ingrese Lote y Cantidad Real.")
+                real_total = (cant_env or 0) * (tam_env or 0)
+                if real_total > 0: st.caption(f"Total: {real_total:.2f}")
+                
+                if st.button("Confirmar", key=f"b_{idx}", type="primary"):
+                    if l_real and real_total > 0:
+                        df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'; df_m.loc[idx, 'Numero de Lote'] = l_real; df_m.loc[idx, 'Cantidad'] = real_total * -1
+                        mask = (df_s['Cod Producto'] == row['Cod Producto']) & (df_s['Numero de Lote'] == l_real)
+                        if mask.any(): df_s.loc[mask, 'Cantidad'] -= real_total
+                        else: df_s = pd.concat([df_s, pd.DataFrame([{'Cod Producto': row['Cod Producto'], 'Numero de Lote': l_real, 'Cantidad': -real_total}])], ignore_index=True)
+                        save_all(df_p, df_s, df_m); st.rerun()
 
 def vista_consultas():
-    c_head1, c_head2 = st.columns([1, 4])
-    with c_head1:
+    c1, c2 = st.columns([1, 4])
+    with c1:
         if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
-    with c_head2:
-        st.subheader("Stock & Historial")
+    with c2: st.subheader("Stock & Historial")
 
     df_p, df_s, df_m = load_data()
     t1, t2 = st.tabs(["📦 STOCK REAL", "📋 HISTORIAL"])
@@ -480,21 +401,23 @@ def vista_consultas():
     with t1:
         if not df_s.empty:
             df_view = df_s[df_s['Cantidad'] != 0].copy()
-            # Limpieza de ceros
-            for c in ['SENASA', 'Cod_Barras', 'Numero de Lote']:
-                if c in df_view.columns: df_view[c] = df_view[c].astype(str).str.replace(r'\.0$', '', regex=True).replace('nan', '')
+            
+            # --- LIMPIEZA DE CEROS MOLESTOS (.000000) ---
+            # Convertimos columnas de texto/código a String y borramos el .0
+            for col in ['SENASA', 'Cod_Barras', 'Numero de Lote']:
+                if col in df_view.columns:
+                    df_view[col] = df_view[col].astype(str).str.replace(r'\.0$', '', regex=True).replace('nan', '')
 
-            if 'Fecha_Vencimiento' in df_view.columns:
-                df_view = df_view.sort_values('Fecha_Vencimiento')
-                st.dataframe(
-                    df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
-                    .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}),
-                    use_container_width=True, height=600,
-                    column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f")}
-                )
+            st.dataframe(
+                df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
+                .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}),
+                use_container_width=True, height=600,
+                # Aquí forzamos 2 decimales para la cantidad, eliminando los ceros extra
+                column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f")}
+            )
     with t2:
         if not df_m.empty:
-            st.dataframe(df_m.sort_values('Fecha Hora', ascending=False), use_container_width=True, height=600, column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f"), "Observaciones": st.column_config.TextColumn(width="large")})
+            st.dataframe(df_m.sort_values('Fecha Hora', ascending=False), use_container_width=True, height=600, column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f")})
 
 # --- ROUTER ---
 if st.session_state.vista == "Menu": vista_menu()
