@@ -6,7 +6,7 @@ import qrcode
 from io import BytesIO
 from streamlit_gsheets import GSheetsConnection
 
-#CONFIGURACIÓN
+# CONFIGURACIÓN
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
@@ -25,11 +25,11 @@ def load_data():
     try:
         conn = get_db_connection()
         #especificando el spreadsheet=SHEET_URL
-        df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=0)
-        df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=0)
-        df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
+        df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=5)
+        df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
+        df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
         
-        # Limpieza automática de títulos (borra espacios invisibles)
+        # Limpieza automática de títulos
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
@@ -341,3 +341,4 @@ elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
+
