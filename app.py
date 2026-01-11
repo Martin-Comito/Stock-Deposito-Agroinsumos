@@ -7,11 +7,85 @@ from io import BytesIO
 import re
 from streamlit_gsheets import GSheetsConnection
 
-#Configuracion
+#CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
+# Diseño css
+def cargar_diseño():
+    st.markdown("""
+        <style>
+        /* FONDO GENERAL */
+        .stApp {
+            background-color: #f4f6f9;
+        }
+
+        /* TÍTULOS */
+        h1, h2, h3 {
+            color: #2e7d32; /* Verde Agro */
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-weight: 700;
+        }
+        h1 {
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* BOTONES PERSONALIZADOS */
+        div[data-testid="stButton"] > button {
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            height: 3em;
+        }
+        /* Botón Primario */
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background-color: #2e7d32;
+            border: none;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        div[data-testid="stButton"] > button[kind="primary"]:hover {
+            background-color: #1b5e20;
+            transform: translateY(-2px);
+        }
+        /* Botón Secundario */
+        div[data-testid="stButton"] > button[kind="secondary"] {
+            background-color: #ffffff;
+            border: 1px solid #2e7d32;
+            color: #2e7d32;
+        }
+        div[data-testid="stButton"] > button[kind="secondary"]:hover {
+            background-color: #e8f5e9;
+        }
+
+        /* TARJETAS DE MÉTRICAS */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 5px solid #2e7d32;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+        div[data-testid="stMetricValue"] {
+            color: #1b5e20;
+        }
+
+        /* LIMPIEZA INTERFAZ */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        </style>
+    """, unsafe_allow_html=True)
+
+# Activa el diseño
+cargar_diseño()
+
+#BASE DE DATOS
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
 
+#CONEXIÓN GOOGLE SHEETS
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
@@ -24,7 +98,7 @@ if 'destino_actual' not in st.session_state: st.session_state.destino_actual = "
 def load_data():
     try:
         conn = get_db_connection()
-        #MEMORIA DE 5 SEGUNDOS (ttl=5)
+        #memoria de 5 segundos (ttl=5)
         df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=5)
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
@@ -34,7 +108,7 @@ def load_data():
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        # Validación básica (DataFrames vacíos con columnas si fallan)
+        # Validación básica
         if df_prod.empty: 
             df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
         
@@ -45,6 +119,10 @@ def load_data():
         if 'Fecha_Vencimiento' not in df_stock.columns:
             df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
+        
+        # Aseguramos que Fecha Hora sea datetime para poder ordenarla
+        if 'Fecha Hora' in df_mov.columns:
+            df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
         
         return df_prod, df_stock, df_mov
     except Exception as e:
@@ -63,7 +141,11 @@ def save_all(df_p, df_s, df_m):
         df_s_export['Fecha_Vencimiento'] = df_s_export['Fecha_Vencimiento'].astype(str).replace('NaT', '')
         conn.update(spreadsheet=SHEET_URL, worksheet="Stock_Real", data=df_s_export)
         
-        conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m)
+        #Convierte fecha de movimientos a string antes de guardar para evitar problemas
+        df_m_export = df_m.copy()
+        df_m_export['Fecha Hora'] = df_m_export['Fecha Hora'].astype(str).replace('NaT', '')
+        conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m_export)
+        
         st.cache_data.clear()
     except Exception as e:
         st.error(f"Error al guardar en la nube: {e}")
@@ -86,8 +168,10 @@ with st.sidebar:
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO(); img.save(buf, format="PNG")
     st.image(buf.getvalue(), caption="Escanear para conectar")
+    st.caption("Desarrollado con Python & Streamlit")
 
 #VISTAS
+
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
     st.markdown("---")
@@ -108,15 +192,14 @@ def vista_ingreso():
     st.subheader("Ingreso de Stock")
     df_p, df_s, df_m = load_data()
     
-    #mapa de productos existente
     if not df_p.empty:
         prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
     else:
         prod_map = {}
 
-    # Opcion producto nuevo
+    #OPCIÓN DE PRODUCTO NUEVO
     col_switch, _ = st.columns([2,1])
-    es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO? (No existe en sistema)")
+    es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO?")
 
     if es_nuevo:
         st.markdown("### Alta de Producto Nuevo")
@@ -131,6 +214,7 @@ def vista_ingreso():
         if df_p.empty:
             st.warning("No hay productos. Marca la casilla de arriba para crear uno.")
             cod_p = None
+            nom_p_display = ""
         else:
             c1, c2 = st.columns(2)
             cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
@@ -147,9 +231,9 @@ def vista_ingreso():
     cod_barra = c5.text_input("GTIN/Cod Barra")
     fecha_venc = c6.date_input("Fecha Vencimiento")
 
-    st.info("Calculadora de Cantidad")
+    st.info("Calculadora de Cantidad Inteligente")
     
-    #SECCIÓN DE UNIDADES
+    #SECCIÓN DE UNIDADES CON CONVERSIÓN
     col_calc1, col_calc2, col_calc3 = st.columns(3)
     n1 = col_calc1.number_input("Cant. de Envases/Bultos", min_value=0.0, value=None, placeholder="0")
     n2 = col_calc2.number_input("Tamaño por Envase", min_value=0.0, value=None, placeholder="0")
@@ -181,12 +265,13 @@ def vista_ingreso():
                 st.error("¡Ese código ya existe! Úsalo desde la lista o cambia el código."); error = True
         
         if not error:
-         
+            # 1. Alta de Producto (si aplica)
             if es_nuevo:
                 new_prod_row = {'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}
                 df_p = pd.concat([df_p, pd.DataFrame([new_prod_row])], ignore_index=True)
                 st.toast(f"Producto '{nom_p_display}' creado!")
 
+            # 2. Guardar Stock
             mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
             fecha_venc_dt = pd.to_datetime(fecha_venc)
 
@@ -196,14 +281,14 @@ def vista_ingreso():
             else:
                 new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
                 df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
-                
+            
+            # 3. Guardar Movimiento
             obs_detalle = f"Ingreso: {val_n1} envases de {val_n2} {unidad}"
             if es_nuevo: obs_detalle += " (ALTA DE PRODUCTO)"
-
             cta_mov = "Stock Inicial" if es_nuevo else (locals().get('cuenta') or "")
 
             mov = {
-                'Fecha Hora': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'ID_Pedido': "INGRESO", 
+                'Fecha Hora': datetime.now(), 'ID_Pedido': "INGRESO", 
                 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 
                 'Cuenta/Entidad': cta_mov, 'Numero de Lote': lote, 'Cantidad': cant_final, 
                 'Destino Origen': "Depósito", 'Observaciones': obs_detalle, 'Estado_Prep': 'TERMINADO'
@@ -231,7 +316,7 @@ def vista_carga():
     sel_prod = col_a.selectbox("Seleccionar Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x,'')}")
     tipo_op = col_b.selectbox("Tipo", ["Venta", "Transferencia", "Uso Interno"])
 
-    st.markdown("Select Lote de Origen:")
+    st.markdown("Seleccionar Lote de Origen:")
     stock_prod = df_s[df_s['Cod Producto'] == sel_prod].copy()
     
     if stock_prod.empty:
@@ -239,6 +324,7 @@ def vista_carga():
         lote_selec = None; stock_disp = 0
     else:
         stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
+        # La cantidad se vera con 2 decimales
         opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
         lote_str = st.selectbox("Lote a utilizar", opciones_lote)
         lote_selec = lote_str.split(" (")[0]
@@ -259,7 +345,7 @@ def vista_carga():
         if not lote_selec: st.error("Debe seleccionar un lote con stock.")
         elif total_a_pedir <= 0: st.error("La cantidad debe ser mayor a 0.")
         else:
-            if total_a_pedir > stock_disp: st.warning(f" CUIDADO: Pide {total_a_pedir}, hay {stock_disp}.")
+            if total_a_pedir > stock_disp: st.warning(f"CUIDADO: Pide {total_a_pedir}, hay {stock_disp}.")
             st.session_state.carrito.append({
                 "cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total_a_pedir, 
                 "lote_asig": lote_selec, "det": f"{v_cb} env x {v_tb}", "tipo": tipo_op, "cta": cuenta
@@ -279,7 +365,7 @@ def vista_carga():
                 new_rows = []
                 for item in st.session_state.carrito:
                     new_rows.append({
-                        'Fecha Hora': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'ID_Pedido': id_ped, 
+                        'Fecha Hora': datetime.now(), 'ID_Pedido': id_ped, 
                         'Usuario': "Oficina", 'Tipo de movimiento': item['tipo'], 'Cod Producto': item['cod'],
                         'Cuenta/Entidad': item['cta'], 'Numero de Lote': item['lote_asig'],
                         'Cantidad': item['cant'] * -1, 'Destino Origen': st.session_state.destino_actual,
@@ -328,7 +414,7 @@ def vista_espera():
 
                 with col_accion:
                     c_lote, c_cant1, c_cant2 = st.columns(3)
-                    lote_real = c_lote.text_input("Escanear Lote Real", value="", placeholder="Escanear aquí...", key=f"l_{idx}")
+                    lote_real = c_lote.text_input("Escanear Lote Real", value="", placeholder="Escanear...", key=f"l_{idx}")
                     cant_env = c_cant1.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0", key=f"ce_{idx}")
                     tam_env = c_cant2.number_input("Tamaño (Lts/Kg)", value=None, placeholder="0", key=f"te_{idx}")
                     
@@ -345,14 +431,14 @@ def vista_espera():
                         l_real_norm = lote_real.strip().upper()
                         l_sol_norm = lote_solicitado.strip().upper()
                         if l_real_norm != l_sol_norm:
-                            st.warning("Lote Distinto al solicitado"); alerta_stock = True; msg_alerta += "Lote Distinto. "
+                            st.warning("Lote Distinto"); alerta_stock = True; msg_alerta += "Lote Distinto. "
 
                     obs_deposito = st.text_input("Obs (Obligatorio si hay cambios)", key=f"obs_{idx}")
                     
                     if st.button(f"Confirmar {prod_nom}", key=f"btn_{idx}"):
                         error = False
                         if not lote_real: st.error("Debe ingresar el Lote Real."); error = True
-                        if alerta_stock and len(obs_deposito) < 3: st.error("Falta observación por diferencias."); error = True
+                        if alerta_stock and len(obs_deposito) < 3: st.error("Falta observación."); error = True
                         if cant_real_total <= 0: st.error("Cantidad inválida."); error = True
                             
                         if not error:
@@ -372,7 +458,7 @@ def vista_espera():
                             st.success("Item Confirmado"); time.sleep(1); st.rerun()
 
 def vista_consultas():
-    if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
+    if st.button("⬅️ Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Semáforo de Vencimientos y Stock")
     df_p, df_s, df_m = load_data()
     t1, t2 = st.tabs(["STOCK & VENCIMIENTOS", "MOVIMIENTOS"])
@@ -382,7 +468,7 @@ def vista_consultas():
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
             
-            # Limpieza de Códigos (Quitar .0)
+            # LIMPIEZA DE CÓDIGOS
             cols_to_clean = ['SENASA', 'Cod_Barras', 'Numero de Lote']
             for col in cols_to_clean:
                 if col in df_view.columns:
@@ -408,13 +494,18 @@ def vista_consultas():
         else: st.warning("Sin stock registrado.")
     with t2:
         if not df_m.empty and 'Fecha Hora' in df_m.columns:
+            st.markdown("Historial Completo de Movimientos")
             st.dataframe(
                 df_m.sort_values(by='Fecha Hora', ascending=False), 
                 use_container_width=True,
+                height=800, 
                 column_config={
+                    "Fecha Hora": st.column_config.DatetimeColumn("Fecha", format="D MMM YYYY, h:mm a"),
                     "Cantidad": st.column_config.NumberColumn(format="%.2f"),
-                    "ID_Pedido": st.column_config.TextColumn(),
-                    "Numero de Lote": st.column_config.TextColumn(),
+                    "ID_Pedido": st.column_config.TextColumn("ID", width="medium"),
+                    "Observaciones": st.column_config.TextColumn("Observaciones", width="large"), 
+                    "Cod Producto": st.column_config.TextColumn("Producto", width="medium"),
+                    "Numero de Lote": st.column_config.TextColumn("Lote"),
                 }
             )
         else:
