@@ -6,19 +6,19 @@ import qrcode
 from io import BytesIO
 from streamlit_gsheets import GSheetsConnection
 
-# --- CONFIGURACIÓN ---
+#CONFIGURACIÓN
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
-# --- CONEXIÓN GOOGLE SHEETS ---
+# CONEXIÓN GOOGLE SHEETS
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-# --- ESTADO DE SESIÓN ---
+# ESTADO DE SESIÓN
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-# --- FUNCIONES DE DATOS ---
+# FUNCIONES DE DATOS (Con Limpieza Automática)
 def load_data():
     try:
         conn = get_db_connection()
@@ -26,12 +26,23 @@ def load_data():
         df_stock = conn.read(worksheet="Stock_Real", ttl=0)
         df_mov = conn.read(worksheet="Movimientos", ttl=0)
         
+        # LIMPIEZA DE TÍTULOS 
+        if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
+        if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
+        if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
+
+        # Validación de seguridad: Si falta la columna clave, mostramos error
+        if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
+            st.error(f"⚠️ Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
         if 'Fecha_Vencimiento' not in df_stock.columns:
             df_stock['Fecha_Vencimiento'] = None
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
         
         return df_prod, df_stock, df_mov
-    except Exception:
+    except Exception as e:
+        st.error(f"Error cargando datos: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 def save_all(df_p, df_s, df_m):
@@ -57,19 +68,17 @@ def aplicar_semaforo(val):
     elif val < alerta: return 'background-color: #ffd700; color: black'
     else: return 'background-color: #90ee90; color: black'
 
-# --- SIDEBAR ---
+# SIDEBAR
 with st.sidebar:
     st.title("📲 Móvil")
-    # Nota: Una vez desplegado, reemplaza esta URL por la tuya (ej: https://agrocheck.streamlit.app)
-    url_app = "https://tu-app-agrocheck.streamlit.app" 
-    
+    url_app = "https://agrocheck-portfolio.streamlit.app" 
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
     qr.add_data(url_app); qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO(); img.save(buf, format="PNG")
     st.image(buf.getvalue(), caption="Escanear para conectar")
 
-# --- VISTAS ---
+# VISTAS 
 
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
@@ -90,6 +99,9 @@ def vista_ingreso():
     if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Ingreso de Stock")
     df_p, df_s, df_m = load_data()
+    
+    if df_p.empty: st.warning("No hay productos cargados en la base de datos."); return
+    
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
     c1, c2 = st.columns(2)
@@ -142,6 +154,9 @@ def vista_carga():
     if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Nueva Orden de Egreso (Oficina)")
     df_p, df_s, _ = load_data()
+    
+    if df_p.empty: st.warning("Error leyendo productos."); return
+
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
     c1, c2 = st.columns(2)
@@ -193,11 +208,11 @@ def vista_carga():
         if st.button("CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary"):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
-                df_m = pd.read_excel(FILE_PATH, sheet_name="Movimientos") if False else conn.read(worksheet="Movimientos", ttl=0) # Logic fix for read
-                # Corrección lógica de lectura para asegurar coherencia en guardado:
-                # Usamos el df_m que ya tenemos o recargamos. Recargamos por seguridad multiusuario:
+                
+                # Recargar conexión para asegurar que lee la última versión de Movimientos
                 conn = get_db_connection()
                 df_m_live = conn.read(worksheet="Movimientos", ttl=0)
+                if not df_m_live.empty: df_m_live.columns = df_m_live.columns.str.strip()
                 
                 new_rows = []
                 for item in st.session_state.carrito:
@@ -218,7 +233,14 @@ def vista_espera():
     if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
     st.subheader("Armado de Pedidos (Depósito)")
     df_p, df_s, df_m = load_data()
+    
+    if df_p.empty or df_m.empty: st.info("Cargando datos..."); return
+    
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
+
+    if 'Estado_Prep' not in df_m.columns: 
+        st.error("No encuentro columna Estado_Prep en Movimientos")
+        return
 
     pendientes = df_m[df_m['Estado_Prep'] == 'PENDIENTE'].copy()
     if pendientes.empty: st.info("No hay pedidos pendientes."); return
@@ -297,17 +319,23 @@ def vista_consultas():
         if not df_s.empty:
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
-            df_view = df_view.sort_values(by='Fecha_Vencimiento', ascending=True)
-            st.dataframe(
-                df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
-                .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}), 
-                use_container_width=True, height=500
-            )
+            if 'Fecha_Vencimiento' in df_view.columns:
+                df_view = df_view.sort_values(by='Fecha_Vencimiento', ascending=True)
+                st.dataframe(
+                    df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
+                    .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}), 
+                    use_container_width=True, height=500
+                )
+            else:
+                st.dataframe(df_view, use_container_width=True)
         else: st.warning("Sin stock registrado.")
     with t2:
-        st.dataframe(df_m.sort_values(by='Fecha Hora', ascending=False), use_container_width=True)
+        if not df_m.empty and 'Fecha Hora' in df_m.columns:
+            st.dataframe(df_m.sort_values(by='Fecha Hora', ascending=False), use_container_width=True)
+        else:
+            st.dataframe(df_m, use_container_width=True)
 
-# --- ROUTER ---
+# ROUTER
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
