@@ -4,15 +4,14 @@ from datetime import datetime, timedelta
 import time
 import qrcode
 from io import BytesIO
+import re
 from streamlit_gsheets import GSheetsConnection
 
-#CONFIGURACIÓN
+#Configuracion
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
 
-
-#CONEXIÓN GOOGLE SHEET
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
@@ -35,7 +34,10 @@ def load_data():
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        # Validación básica
+        # Validación básica (DataFrames vacíos con columnas si fallan)
+        if df_prod.empty: 
+            df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
+        
         if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
             st.error(f"Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -74,7 +76,7 @@ def aplicar_semaforo(val):
     elif val < alerta: return 'background-color: #ffd700; color: black'
     else: return 'background-color: #90ee90; color: black'
 
-# SIDEBAR
+#SIDEBAR
 with st.sidebar:
     st.title("📲 Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
@@ -86,7 +88,6 @@ with st.sidebar:
     st.image(buf.getvalue(), caption="Escanear para conectar")
 
 #VISTAS
-
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
     st.markdown("---")
@@ -107,14 +108,37 @@ def vista_ingreso():
     st.subheader("Ingreso de Stock")
     df_p, df_s, df_m = load_data()
     
-    if df_p.empty: st.warning("No hay productos cargados en la base de datos o hubo error de lectura."); return
-    
-    prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
+    #mapa de productos existente
+    if not df_p.empty:
+        prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
+    else:
+        prod_map = {}
 
-    #SELECCIÓN DE PRODUCTO
-    c1, c2 = st.columns(2)
-    cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
-    cuenta = c2.text_input("Cuenta / Propiedad")
+    # Opcion producto nuevo
+    col_switch, _ = st.columns([2,1])
+    es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO? (No existe en sistema)")
+
+    if es_nuevo:
+        st.markdown("### Alta de Producto Nuevo")
+        c_new1, c_new2 = st.columns(2)
+        cod_p_input = c_new1.text_input("Definir Nuevo Código (Corto)", placeholder="Ej: FUNG_NUEVO")
+        nom_p_input = c_new2.text_input("Nombre Comercial Completo", placeholder="Ej: Fungicida Nuevo 5L")
+        
+        cod_p = cod_p_input.strip()
+        nom_p_display = nom_p_input.strip()
+    else:
+        # Selección normal
+        if df_p.empty:
+            st.warning("No hay productos. Marca la casilla de arriba para crear uno.")
+            cod_p = None
+        else:
+            c1, c2 = st.columns(2)
+            cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
+            nom_p_display = prod_map.get(cod_p, '')
+            cuenta = c2.text_input("Cuenta / Propiedad")
+
+    if not es_nuevo:
+        st.markdown("---")
 
     #DATOS DEL LOTE
     c3, c4, c5, c6 = st.columns(4)
@@ -123,12 +147,10 @@ def vista_ingreso():
     cod_barra = c5.text_input("GTIN/Cod Barra")
     fecha_venc = c6.date_input("Fecha Vencimiento")
 
-    st.markdown("---")
     st.info("Calculadora de Cantidad")
     
     #SECCIÓN DE UNIDADES
     col_calc1, col_calc2, col_calc3 = st.columns(3)
-    
     n1 = col_calc1.number_input("Cant. de Envases/Bultos", min_value=0.0, value=None, placeholder="0")
     n2 = col_calc2.number_input("Tamaño por Envase", min_value=0.0, value=None, placeholder="0")
     unidad = col_calc3.selectbox("Unidad de Medida", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
@@ -137,7 +159,7 @@ def vista_ingreso():
     val_n2 = n2 if n2 is not None else 0.0
     total_bruto = val_n1 * val_n2
     
-    #Conversión automática a Kilos/Litros
+    # Conversión
     if unidad == "Gramos" or unidad == "Cm3 / Ml":
         cant_final = total_bruto / 1000
         msg_unidad = "Kg/L (Convertido autom.)"
@@ -148,7 +170,23 @@ def vista_ingreso():
     st.metric(label=f"Total a Ingresar ({msg_unidad})", value=f"{cant_final:.2f}")
 
     if st.button("Guardar Ingreso", type="primary"):
-        if lote and cant_final > 0:
+        error = False
+        if not lote or cant_final <= 0:
+            st.error("Faltan datos: Lote o Cantidad."); error = True
+        
+        if es_nuevo:
+            if not cod_p or not nom_p_display:
+                st.error("Para productos nuevos, Código y Nombre son obligatorios."); error = True
+            if cod_p in prod_map:
+                st.error("¡Ese código ya existe! Úsalo desde la lista o cambia el código."); error = True
+        
+        if not error:
+         
+            if es_nuevo:
+                new_prod_row = {'Cod Producto': cod_p, 'Nombre comercial': nom_p_display}
+                df_p = pd.concat([df_p, pd.DataFrame([new_prod_row])], ignore_index=True)
+                st.toast(f"Producto '{nom_p_display}' creado!")
+
             mask = (df_s['Cod Producto'] == cod_p) & (df_s['Numero de Lote'] == lote)
             fecha_venc_dt = pd.to_datetime(fecha_venc)
 
@@ -158,20 +196,22 @@ def vista_ingreso():
             else:
                 new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
                 df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
-            
+                
             obs_detalle = f"Ingreso: {val_n1} envases de {val_n2} {unidad}"
-            
+            if es_nuevo: obs_detalle += " (ALTA DE PRODUCTO)"
+
+            cta_mov = "Stock Inicial" if es_nuevo else (locals().get('cuenta') or "")
+
             mov = {
                 'Fecha Hora': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'ID_Pedido': "INGRESO", 
                 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 
-                'Cuenta/Entidad': cuenta, 'Numero de Lote': lote, 'Cantidad': cant_final, 
+                'Cuenta/Entidad': cta_mov, 'Numero de Lote': lote, 'Cantidad': cant_final, 
                 'Destino Origen': "Depósito", 'Observaciones': obs_detalle, 'Estado_Prep': 'TERMINADO'
             }
             df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
+            
             save_all(df_p, df_s, df_m)
             st.success(f"Guardado exitosamente: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
-        else:
-            st.error("Faltan datos obligatorios (Lote o Cantidad)")
 
 def vista_carga():
     if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
@@ -342,10 +382,10 @@ def vista_consultas():
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
             
-            # LIMPIEZA DE CÓDIGOS PARA QUITAR EL .0 
+            # Limpieza de Códigos (Quitar .0)
             cols_to_clean = ['SENASA', 'Cod_Barras', 'Numero de Lote']
             for col in cols_to_clean:
-                if col in df_view.columns:     
+                if col in df_view.columns:
                     df_view[col] = df_view[col].astype(str).str.replace(r'\.0$', '', regex=True).replace('nan', '')
 
             if 'Fecha_Vencimiento' in df_view.columns:
