@@ -7,9 +7,10 @@ from io import BytesIO
 import re
 from streamlit_gsheets import GSheetsConnection
 
-#CONFIGURACIÓN INICIAL
+# --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="AgroCheck Pro", layout="wide", initial_sidebar_state="expanded")
 
+# --- 2. CAPA DE DISEÑO (ESTILO INDUSTRIAL CLEAN / SAAS) ---
 def cargar_diseño():
     st.markdown("""
         <style>
@@ -137,21 +138,24 @@ def cargar_diseño():
         </style>
     """, unsafe_allow_html=True)
 
+# Activamos el diseño
 cargar_diseño()
 
-#BASE DE DATOS
+# ---------------------------------------------------------
+# ✅ TU BASE DE DATOS
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
+# ---------------------------------------------------------
 
-#CONEXIÓN GOOGLE SHEETS
+# --- CONEXIÓN GOOGLE SHEETS ---
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-#ESTADO DE SESIÓN
+# --- ESTADO DE SESIÓN ---
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-#FUNCIONES DE DATOS
+# --- FUNCIONES DE DATOS ---
 def load_data():
     try:
         conn = get_db_connection()
@@ -166,7 +170,7 @@ def load_data():
         if df_prod.empty: df_prod = pd.DataFrame(columns=['Cod Producto', 'Nombre comercial'])
         
         if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
-            st.error(f"Error: No encuentro 'Cod Producto'.")
+            st.error(f"⚠️ Error: No encuentro 'Cod Producto'.")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
         if 'Fecha_Vencimiento' not in df_stock.columns:
@@ -179,7 +183,7 @@ def load_data():
         return df_prod, df_stock, df_mov
     except Exception as e:
         if "Quota exceeded" in str(e):
-            st.warning("Google está pidiendo un respiro. Espera 10 segundos y recarga.")
+            st.warning("⚠️ Google está pidiendo un respiro. Espera 10 segundos y recarga.")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         st.error(f"Error cargando datos: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -205,17 +209,17 @@ def aplicar_semaforo(val):
     if pd.isna(val): return ''
     hoy = datetime.now()
     alerta = hoy + timedelta(days=90)
-    
-    if val < hoy: return 'background-color: #fee2e2; color: #b91c1c; font-weight: 600;' 
-    elif val < alerta: return 'background-color: #fef3c7; color: #b45309; font-weight: 600;' 
-    else: return 'background-color: #dcfce7; color: #15803d; font-weight: 600;' 
+    # Colores SaaS (Flat UI colors)
+    if val < hoy: return 'background-color: #fee2e2; color: #b91c1c; font-weight: 600;' # Rojo suave
+    elif val < alerta: return 'background-color: #fef3c7; color: #b45309; font-weight: 600;' # Ambar
+    else: return 'background-color: #dcfce7; color: #15803d; font-weight: 600;' # Verde Esmeralda
 
-#SIDEBAR
+# --- SIDEBAR (CON QR MEJORADO) ---
 with st.sidebar:
-    st.markdown("**AgroCheck Mobile**")
+    st.markdown("### 📱 **AgroCheck Mobile**")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
-    #QR
+    # Generamos QR
     qr = qrcode.QRCode(version=1, box_size=8, border=1)
     qr.add_data(url_app); qr.make(fit=True)
     img = qr.make_image(fill_color="#1e293b", back_color="white")
@@ -229,7 +233,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("v2.0 Industrial Build")
 
-#VISTAS
+# --- VISTAS ---
 
 def vista_menu():
     st.title("Gestión Depósito Agroquímicos")
@@ -239,7 +243,7 @@ def vista_menu():
     
     with c1:
         with st.container(border=True):
-            st.info("**Oficina Técnica**")
+            st.info("🏢 **Oficina Técnica**")
             if st.button("NUEVA ORDEN DE SALIDA", use_container_width=True, type="primary"):
                 st.session_state.vista = "Carga"; st.rerun()
             if st.button("INGRESO DE MERCADERÍA", use_container_width=True):
@@ -247,7 +251,7 @@ def vista_menu():
             
     with c2:
         with st.container(border=True):
-            st.success("**Depósito / Operativa**")
+            st.success("📦 **Depósito / Operativa**")
             if st.button("ARMAR PEDIDOS", use_container_width=True):
                 st.session_state.vista = "Espera"; st.rerun()
             if st.button("STOCK E HISTORIAL", use_container_width=True):
@@ -256,7 +260,7 @@ def vista_menu():
 def vista_ingreso():
     c_head1, c_head2 = st.columns([1, 4])
     with c_head1:
-        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c_head2:
         st.subheader("Ingreso de Stock")
         
@@ -266,10 +270,10 @@ def vista_ingreso():
     # Tarjeta de Alta
     with st.container(border=True):
         col_switch, _ = st.columns([2,1])
-        es_nuevo = col_switch.checkbox("¿Es un producto NUEVO?")
+        es_nuevo = col_switch.checkbox("➕ ¿Es un producto NUEVO? (Alta Rápida)")
 
         if es_nuevo:
-            st.markdown("Alta de Producto")
+            st.markdown("##### 🆕 Alta de Producto")
             c_new1, c_new2 = st.columns(2)
             cod_p = c_new1.text_input("Definir Nuevo Código", placeholder="Ej: FUNG_NUEVO").strip()
             nom_p_display = c_new2.text_input("Nombre Comercial", placeholder="Ej: Fungicida Nuevo 5L").strip()
@@ -283,16 +287,16 @@ def vista_ingreso():
                 cuenta = c2.text_input("Cuenta / Propiedad")
 
         st.markdown("---")
-        st.markdown("Datos del Lote")
+        st.markdown("##### 🏷️ Datos del Lote")
         c3, c4, c5, c6 = st.columns(4)
         lote = c3.text_input("N° Lote")
         senasa = c4.text_input("SENASA")
         cod_barra = c5.text_input("GTIN/Cod Barra")
         fecha_venc = c6.date_input("Fecha Vencimiento")
 
-    #Calculadora
+    # Tarjeta Calculadora
     with st.container(border=True):
-        st.markdown("Calculadora de Cantidad")
+        st.markdown("##### 🧮 Calculadora de Cantidad")
         col_calc1, col_calc2, col_calc3 = st.columns(3)
         n1 = col_calc1.number_input("Cant. Bultos", min_value=0.0, placeholder="0")
         n2 = col_calc2.number_input("Tamaño Unitario", min_value=0.0, placeholder="0")
@@ -306,13 +310,13 @@ def vista_ingreso():
 
         st.metric(label=f"Total a Ingresar ({msg_unidad})", value=f"{cant_final:.2f}")
 
-    if st.button("GUARDAR INGRESO", type="primary", use_container_width=True):
+    if st.button("💾 GUARDAR INGRESO", type="primary", use_container_width=True):
         error = False
-        if not lote or cant_final <= 0: st.error("Faltan datos."); error = True
+        if not lote or cant_final <= 0: st.error("❌ Faltan datos."); error = True
         
         if es_nuevo:
-            if not cod_p or not nom_p_display: st.error("Datos incompletos."); error = True
-            elif cod_p in prod_map: st.error("El código ya existe."); error = True
+            if not cod_p or not nom_p_display: st.error("❌ Datos incompletos."); error = True
+            elif cod_p in prod_map: st.error("❌ El código ya existe."); error = True
         
         if not error:
             if es_nuevo:
@@ -334,12 +338,12 @@ def vista_ingreso():
             
             df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
             save_all(df_p, df_s, df_m)
-            st.success(f"Guardado: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
+            st.success(f"✅ Guardado: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
 
 def vista_carga():
     c_head1, c_head2 = st.columns([1, 4])
     with c_head1:
-        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c_head2:
         st.subheader("Nueva Orden de Egreso")
 
@@ -360,7 +364,7 @@ def vista_carga():
         stock_prod = df_s[df_s['Cod Producto'] == sel_prod].copy()
         
         if stock_prod.empty:
-            st.error("No hay stock registrado.")
+            st.error("⚠️ No hay stock registrado.")
             lote_selec = None; stock_disp = 0
         else:
             stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
@@ -378,16 +382,16 @@ def vista_carga():
         total_a_pedir = v_cb * v_tb
         cc3.metric("Total Solicitado", f"{total_a_pedir:.2f}")
 
-    if st.button("AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
+    if st.button("➕ AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
         if not lote_selec or total_a_pedir <= 0: st.error("Verifique lote y cantidad.")
         else:
-            if total_a_pedir > stock_disp: st.warning(f"Stock insuficiente (Hay {stock_disp})")
+            if total_a_pedir > stock_disp: st.warning(f"⚠️ Stock insuficiente (Hay {stock_disp})")
             st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total_a_pedir, "lote_asig": lote_selec, "det": f"{v_cb} env x {v_tb}", "tipo": tipo_op, "cta": cuenta})
 
     if st.session_state.carrito:
-        st.markdown("### Carrito")
+        st.markdown("### 🛒 Carrito")
         st.table(pd.DataFrame(st.session_state.carrito))
-        if st.button("CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary", use_container_width=True):
+        if st.button("✅ CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary", use_container_width=True):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
                 conn = get_db_connection()
@@ -400,13 +404,13 @@ def vista_carga():
                 
                 df_m_live = pd.concat([df_m_live, pd.DataFrame(new_rows)], ignore_index=True)
                 save_all(df_p, df_s, df_m_live)
-                st.session_state.carrito = []; st.success("Orden enviada."); time.sleep(1); st.rerun()
-            else: st.error("Falta el Destino")
+                st.session_state.carrito = []; st.success("✅ Orden enviada."); time.sleep(1); st.rerun()
+            else: st.error("❌ Falta el Destino")
 
 def vista_espera():
     c_head1, c_head2 = st.columns([1, 4])
     with c_head1:
-        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c_head2:
         st.subheader("Armado de Pedidos")
 
@@ -416,14 +420,14 @@ def vista_espera():
 
     if 'Estado_Prep' not in df_m.columns: st.error("Error columnas."); return
     pendientes = df_m[df_m['Estado_Prep'] == 'PENDIENTE'].copy()
-    if pendientes.empty: st.info("No hay pedidos pendientes."); return
+    if pendientes.empty: st.info("✅ No hay pedidos pendientes."); return
 
     lista_pedidos = pendientes['ID_Pedido'].unique()
     pedido_selec = st.selectbox("Seleccionar Pedido a Armar", lista_pedidos)
 
     if pedido_selec:
         items = pendientes[pendientes['ID_Pedido'] == pedido_selec]
-        st.info(f"Destino: **{items.iloc[0]['Destino Origen']}**")
+        st.info(f"📍 Destino: **{items.iloc[0]['Destino Origen']}**")
         
         for idx, row in items.iterrows():
             with st.container(border=True):
@@ -433,7 +437,7 @@ def vista_espera():
                 with col_info:
                     st.markdown(f"**{prod_map.get(row['Cod Producto'], row['Cod Producto'])}**")
                     st.caption(f"Lote Pedido: {row['Numero de Lote']}")
-                    st.markdown(f"Cant: **{cant_pedida:.2f}**")
+                    st.markdown(f"📦 Cant: **{cant_pedida:.2f}**")
 
                 with col_accion:
                     c_lote, c_cant1, c_cant2 = st.columns(3)
@@ -446,7 +450,7 @@ def vista_espera():
                     
                     obs_dep = st.text_input("Observaciones", key=f"obs_{idx}")
                     
-                    if st.button("Confirmar Item", key=f"btn_{idx}", type="primary"):
+                    if st.button("✅ Confirmar Item", key=f"btn_{idx}", type="primary"):
                         if lote_real and cant_real > 0:
                             lote_final = lote_real.strip().upper()
                             df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'
@@ -466,12 +470,12 @@ def vista_espera():
 def vista_consultas():
     c_head1, c_head2 = st.columns([1, 4])
     with c_head1:
-        if st.button("Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
+        if st.button("⬅️ Volver", type="secondary"): st.session_state.vista = "Menu"; st.rerun()
     with c_head2:
         st.subheader("Stock & Historial")
 
     df_p, df_s, df_m = load_data()
-    t1, t2 = st.tabs(["STOCK REAL", "HISTORIAL"])
+    t1, t2 = st.tabs(["📦 STOCK REAL", "📋 HISTORIAL"])
     
     with t1:
         if not df_s.empty:
@@ -492,7 +496,7 @@ def vista_consultas():
         if not df_m.empty:
             st.dataframe(df_m.sort_values('Fecha Hora', ascending=False), use_container_width=True, height=600, column_config={"Cantidad": st.column_config.NumberColumn(format="%.2f"), "Observaciones": st.column_config.TextColumn(width="large")})
 
-#Router
+# --- ROUTER ---
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
