@@ -9,6 +9,8 @@ from streamlit_gsheets import GSheetsConnection
 #CONFIGURACIÓN
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
+
 # CONEXIÓN GOOGLE SHEETS
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
@@ -18,22 +20,23 @@ if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-# FUNCIONES DE DATOS (Con Limpieza Automática)
+# FUNCIONES DE DATOS
 def load_data():
     try:
         conn = get_db_connection()
-        df_prod = conn.read(worksheet="Productos", ttl=0)
-        df_stock = conn.read(worksheet="Stock_Real", ttl=0)
-        df_mov = conn.read(worksheet="Movimientos", ttl=0)
+        #especificando el spreadsheet=SHEET_URL
+        df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=0)
+        df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=0)
+        df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
         
-        # LIMPIEZA DE TÍTULOS 
+        # Limpieza automática de títulos (borra espacios invisibles)
         if not df_prod.empty: df_prod.columns = df_prod.columns.str.strip()
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        # Validación de seguridad: Si falta la columna clave, mostramos error
+        # Validación
         if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
-            st.error(f"⚠️ Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
+            st.error(f" Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
         if 'Fecha_Vencimiento' not in df_stock.columns:
@@ -48,14 +51,14 @@ def load_data():
 def save_all(df_p, df_s, df_m):
     try:
         conn = get_db_connection()
-        conn.update(worksheet="Productos", data=df_p)
         
-        # Formateo de fechas para asegurar compatibilidad con Sheets
+        conn.update(spreadsheet=SHEET_URL, worksheet="Productos", data=df_p)
+        
         df_s_export = df_s.copy()
         df_s_export['Fecha_Vencimiento'] = df_s_export['Fecha_Vencimiento'].astype(str).replace('NaT', '')
-        conn.update(worksheet="Stock_Real", data=df_s_export)
+        conn.update(spreadsheet=SHEET_URL, worksheet="Stock_Real", data=df_s_export)
         
-        conn.update(worksheet="Movimientos", data=df_m)
+        conn.update(spreadsheet=SHEET_URL, worksheet="Movimientos", data=df_m)
         st.cache_data.clear()
     except Exception as e:
         st.error(f"Error al guardar en la nube: {e}")
@@ -68,17 +71,16 @@ def aplicar_semaforo(val):
     elif val < alerta: return 'background-color: #ffd700; color: black'
     else: return 'background-color: #90ee90; color: black'
 
-# SIDEBAR
+# SIDEBAR 
 with st.sidebar:
     st.title("📲 Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
+    
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
     qr.add_data(url_app); qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO(); img.save(buf, format="PNG")
     st.image(buf.getvalue(), caption="Escanear para conectar")
-
-# VISTAS 
 
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
@@ -100,7 +102,7 @@ def vista_ingreso():
     st.subheader("Ingreso de Stock")
     df_p, df_s, df_m = load_data()
     
-    if df_p.empty: st.warning("No hay productos cargados en la base de datos."); return
+    if df_p.empty: st.warning("No hay productos cargados en la base de datos o hubo error de lectura."); return
     
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
@@ -208,10 +210,8 @@ def vista_carga():
         if st.button("CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary"):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
-                
-                # Recargar conexión para asegurar que lee la última versión de Movimientos
                 conn = get_db_connection()
-                df_m_live = conn.read(worksheet="Movimientos", ttl=0)
+                df_m_live = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
                 if not df_m_live.empty: df_m_live.columns = df_m_live.columns.str.strip()
                 
                 new_rows = []
@@ -335,7 +335,7 @@ def vista_consultas():
         else:
             st.dataframe(df_m, use_container_width=True)
 
-# ROUTER
+#ROUTER
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
