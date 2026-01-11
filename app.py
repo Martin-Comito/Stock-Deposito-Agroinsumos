@@ -85,13 +85,6 @@ def cargar_diseño():
         </style>
     """, unsafe_allow_html=True)
 
-        /* LIMPIEZA INTERFAZ */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        </style>
-    """, unsafe_allow_html=True)
-
 # Activacion del diseño
 cargar_diseño()
 
@@ -528,4 +521,5 @@ elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
+
 
