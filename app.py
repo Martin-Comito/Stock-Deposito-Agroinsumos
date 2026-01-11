@@ -81,6 +81,7 @@ def cargar_diseño():
             font-size: 0.95rem;
         }
 
+        /* INPUTS BLANCOS */
         div[data-baseweb="input"] > div, div[data-baseweb="select"] > div, div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             color: #000000 !important;
@@ -190,7 +191,6 @@ def load_data():
         df_stock = limpiar_columnas(df_stock)
         df_mov = limpiar_columnas(df_mov)
 
-        # Validación Crítica de Columnas
         if not df_prod.empty and 'Cod Producto' not in df_prod.columns:
             for col in df_prod.columns:
                 if col.lower() in ['codigo', 'cod_producto', 'id', 'cod']:
@@ -206,8 +206,7 @@ def load_data():
         df_stock['Fecha_Vencimiento'] = pd.to_datetime(df_stock['Fecha_Vencimiento'], errors='coerce')
         if 'Fecha Hora' in df_mov.columns: df_mov['Fecha Hora'] = pd.to_datetime(df_mov['Fecha Hora'], errors='coerce')
         
-        # --- CORRECCIÓN CRÍTICA DE MAYÚSCULAS ---
-        # Forzamos que todos los lotes en la base de datos sean MAYÚSCULAS
+        # --- FUERZA BRUTA DE MAYÚSCULAS AL LEER ---
         if not df_stock.empty and 'Numero de Lote' in df_stock.columns:
             df_stock['Numero de Lote'] = df_stock['Numero de Lote'].astype(str).str.strip().str.upper()
         if not df_mov.empty and 'Numero de Lote' in df_mov.columns:
@@ -330,7 +329,7 @@ def vista_ingreso():
     if st.button("💾 GUARDAR", type="primary", use_container_width=True):
         if not lote or cant_final <= 0: st.error("Faltan datos."); return
         
-        # Normalizar LOTE a Mayúsculas
+        # --- FORZAR MAYÚSCULAS SIEMPRE ---
         lote_final = lote.strip().upper()
 
         if es_nuevo:
@@ -375,12 +374,16 @@ def vista_carga():
         tipo_op = c_type.selectbox("Motivo", ["Venta", "Transferencia", "Uso Interno"])
 
         stock_prod = df_s[df_s['Cod Producto'] == sel_prod].copy()
-        if stock_prod.empty: st.warning("Sin stock"); lote_selec = None
+        if stock_prod.empty:
+            st.warning("⚠️ Sin stock de este producto.")
+            lote_selec = None
+            stock_disp = 0
         else:
             stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
             opciones = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
             lote_str = st.selectbox("Seleccionar Lote", opciones)
             lote_selec = lote_str.split(" (")[0]
+            stock_disp = stock_prod[stock_prod['Numero de Lote'] == lote_selec]['Cantidad'].values[0]
 
         cc1, cc2, cc3 = st.columns(3)
         n1 = cc1.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0")
@@ -389,7 +392,13 @@ def vista_carga():
         cc3.metric("Total Salida", f"{total:.2f}")
 
     if st.button("➕ AGREGAR AL PEDIDO", type="secondary", use_container_width=True):
-        if lote_selec and total > 0:
+        if not lote_selec:
+            st.error("⛔ Debe seleccionar un lote válido.")
+        elif total <= 0:
+            st.error("⛔ La cantidad total debe ser mayor a 0.")
+        elif total > stock_disp:
+            st.error(f"⛔ STOCK INSUFICIENTE. Pide {total:.2f} pero solo hay {stock_disp:.2f} en este lote.")
+        else:
             st.session_state.carrito.append({"cod": sel_prod, "nom": prod_map.get(sel_prod), "cant": total, "lote_asig": lote_selec, "det": f"{n1} env x {n2}", "tipo": tipo_op, "cta": cuenta})
 
     if st.session_state.carrito:
@@ -407,7 +416,9 @@ def vista_carga():
                         st.rerun()
 
         if st.button("✅ CONFIRMAR Y ENVIAR", type="primary", use_container_width=True):
-            if st.session_state.destino_actual:
+            if not st.session_state.destino_actual:
+                st.error("⛔ Faltan datos: Ingrese Destino / Cliente.")
+            else:
                 id_ped = f"PED-{int(time.time())}"
                 conn = get_db_connection()
                 df_m_live = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
@@ -417,9 +428,11 @@ def vista_carga():
                 
                 df_m_live = pd.concat([df_m_live, pd.DataFrame(new_rows)], ignore_index=True)
                 save_all(df_p, df_s, df_m_live)
-                st.session_state.carrito = []
-                st.success("Enviado!"); time.sleep(1); st.rerun()
-            else: st.error("Falta Destino")
+                
+                st.session_state.carrito = [] 
+                st.success("✅ Pedido Enviado Exitosamente!") 
+                time.sleep(1)
+                st.rerun()
 
 def vista_espera():
     c1, c2 = st.columns([1, 4])
@@ -428,8 +441,7 @@ def vista_espera():
     with c2: st.subheader("Armado de Pedidos")
 
     df_p, df_s, df_m = load_data()
-    # VALIDACIÓN EXTRA: Si está vacío, no intentar acceder a columnas
-    if df_p.empty: st.info("Sin datos de productos."); return
+    if df_p.empty: st.info("Sin datos."); return
     
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
     
@@ -443,21 +455,44 @@ def vista_espera():
     for idx, row in items.iterrows():
         with st.container(border=True):
             c_info, c_action = st.columns([1, 2])
+            
+            cant_pedida = abs(row['Cantidad'])
+            
             with c_info:
                 st.markdown(f"**{prod_map.get(row['Cod Producto'], row['Cod Producto'])}**")
-                st.caption(f"Lote: {row['Numero de Lote']}")
-                st.markdown(f"Cant: **{abs(row['Cantidad']):.2f}**")
+                st.caption(f"Lote Solicitado: {row['Numero de Lote']}")
+                st.markdown(f"📦 Cant Pedida: **{cant_pedida:.2f}**")
             
             with c_action:
                 c1, c2, c3 = st.columns(3)
                 l_real = c1.text_input("Lote Real", key=f"l_{idx}")
                 cant_env = c2.number_input("Cant. Envases", min_value=0.0, value=None, placeholder="0", key=f"c_{idx}")
                 tam_env = c3.number_input("Lts/Kg Envase", min_value=0.0, value=None, placeholder="0", key=f"t_{idx}")
+                
+                # --- CALCULADORA Y VALIDACIÓN EN TIEMPO REAL ---
                 real_total = (cant_env or 0) * (tam_env or 0)
                 
+                if real_total > 0:
+                    diff = real_total - cant_pedida
+                    # Si la diferencia es casi cero (tolerancia 0.01)
+                    if abs(diff) < 0.01:
+                        st.success(f"✅ Total: {real_total:.2f} (Correcto)")
+                    else:
+                        st.error(f"❌ Total: {real_total:.2f} (Difiere: {diff:.2f})")
+                
                 if st.button("Confirmar", key=f"b_{idx}", type="primary"):
-                    if l_real and real_total > 0:
-                        # CONVERTIR A MAYÚSCULAS PARA MATCH EXACTO
+                    error = False
+                    # 1. Validación de Mayúsculas y Texto
+                    if not l_real: 
+                        st.error("Falta el Lote Real."); error = True
+                    
+                    # 2. Validación Estricta de Cantidad
+                    if abs(real_total - cant_pedida) > 0.01:
+                        st.error(f"⛔ Error: La cantidad preparada ({real_total}) no coincide con la pedida ({cant_pedida}).")
+                        error = True
+                    
+                    if not error:
+                        # --- FORZAR MAYÚSCULAS ---
                         lote_final = l_real.strip().upper()
                         
                         df_m.loc[idx, 'Estado_Prep'] = 'TERMINADO'
@@ -469,6 +504,7 @@ def vista_espera():
                         if mask.any(): 
                             df_s.loc[mask, 'Cantidad'] -= real_total
                         else: 
+                            # Si cambia el lote y no existe, se crea en negativo (ajuste stock)
                             df_s = pd.concat([df_s, pd.DataFrame([{'Cod Producto': row['Cod Producto'], 'Numero de Lote': lote_final, 'Cantidad': -real_total}])], ignore_index=True)
                         
                         save_all(df_p, df_s, df_m)
