@@ -5,7 +5,7 @@ import time
 import qrcode
 from io import BytesIO
 import re
-from streamlit_gsheets import GSheetsConnectio
+from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="AgroCheck Pro", layout="wide", initial_sidebar_state="expanded")
 
@@ -441,3 +441,4 @@ elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
+
