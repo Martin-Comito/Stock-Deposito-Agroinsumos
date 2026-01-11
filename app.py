@@ -6,25 +6,25 @@ import qrcode
 from io import BytesIO
 from streamlit_gsheets import GSheetsConnection
 
-# CONFIGURACIÓN
+#Configuracion 
 st.set_page_config(page_title="AgroCheck Pro", layout="wide")
 
+#Base de datos
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1UFsJ0eQ40hfKfL31e2I9mjUGNnk-6E2PkBmK4rKONAM/edit"
-
-# CONEXIÓN GOOGLE SHEETS
+#CONEXIÓN GOOGLE SHEETS
 def get_db_connection():
     return st.connection("gsheets", type=GSheetsConnection)
 
-# ESTADO DE SESIÓN
+#Estado de sesion
 if 'vista' not in st.session_state: st.session_state.vista = "Menu"
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'destino_actual' not in st.session_state: st.session_state.destino_actual = ""
 
-# FUNCIONES DE DATOS
+#Funciones de datos
 def load_data():
     try:
         conn = get_db_connection()
-        #especificando el spreadsheet=SHEET_URL
+        #MEMORIA DE 5 SEGUNDOS (ttl=5) PARA EVITAR BLOQUEO DE GOOGLE
         df_prod = conn.read(spreadsheet=SHEET_URL, worksheet="Productos", ttl=5)
         df_stock = conn.read(spreadsheet=SHEET_URL, worksheet="Stock_Real", ttl=5)
         df_mov = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=5)
@@ -34,9 +34,9 @@ def load_data():
         if not df_stock.empty: df_stock.columns = df_stock.columns.str.strip()
         if not df_mov.empty: df_mov.columns = df_mov.columns.str.strip()
 
-        # Validación
+        #Validación básica
         if 'Cod Producto' not in df_prod.columns and not df_prod.empty:
-            st.error(f" Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
+            st.error(f"Error: No encuentro 'Cod Producto'. Columnas leídas: {df_prod.columns.tolist()}")
             return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
         if 'Fecha_Vencimiento' not in df_stock.columns:
@@ -45,13 +45,16 @@ def load_data():
         
         return df_prod, df_stock, df_mov
     except Exception as e:
+        # Manejo suave del error de cuota
+        if "Quota exceeded" in str(e):
+            st.warning("Google está pidiendo un respiro. Espera 10 segundos y recarga.")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         st.error(f"Error cargando datos: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 def save_all(df_p, df_s, df_m):
     try:
         conn = get_db_connection()
-        
         conn.update(spreadsheet=SHEET_URL, worksheet="Productos", data=df_p)
         
         df_s_export = df_s.copy()
@@ -71,9 +74,9 @@ def aplicar_semaforo(val):
     elif val < alerta: return 'background-color: #ffd700; color: black'
     else: return 'background-color: #90ee90; color: black'
 
-# SIDEBAR 
+#SIDEBAR
 with st.sidebar:
-    st.title("📲 Móvil")
+    st.title("Móvil")
     url_app = "https://agrocheck-portfolio.streamlit.app" 
     
     qr = qrcode.QRCode(version=1, box_size=8, border=2)
@@ -81,6 +84,8 @@ with st.sidebar:
     img = qr.make_image(fill_color="black", back_color="white")
     buf = BytesIO(); img.save(buf, format="PNG")
     st.image(buf.getvalue(), caption="Escanear para conectar")
+
+#VISTAS
 
 def vista_menu():
     st.markdown("<h1 style='text-align: center;'>Gestión Depósito Agroquímicos</h1>", unsafe_allow_html=True)
@@ -106,27 +111,41 @@ def vista_ingreso():
     
     prod_map = df_p.set_index('Cod Producto')['Nombre comercial'].to_dict()
 
+    #SELECCIÓN DE PRODUCTO
     c1, c2 = st.columns(2)
     cod_p = c1.selectbox("Producto", df_p['Cod Producto'].unique(), format_func=lambda x: f"{x} | {prod_map.get(x, '')}")
     cuenta = c2.text_input("Cuenta / Propiedad")
 
+    #DATOS DEL LOTE
     c3, c4, c5, c6 = st.columns(4)
     lote = c3.text_input("N° Lote")
     senasa = c4.text_input("SENASA")
     cod_barra = c5.text_input("GTIN/Cod Barra")
     fecha_venc = c6.date_input("Fecha Vencimiento")
 
-    st.info("Calculadora de Ingreso")
-    col_calc1, col_calc2 = st.columns(2)
+    st.markdown("---")
+    st.info("🧮 Calculadora de Cantidad")
     
-    n1 = col_calc1.number_input("Cantidad de Bultos/Envases", min_value=0.0, value=None, placeholder="0")
-    n2 = col_calc2.number_input("Unidades/Litros por Bulto", min_value=0.0, value=None, placeholder="0")
+    #SECCIÓN DE UNIDADES CON CONVERSIÓN
+    col_calc1, col_calc2, col_calc3 = st.columns(3)
+    
+    n1 = col_calc1.number_input("Cant. de Envases/Bultos", min_value=0.0, value=None, placeholder="0")
+    n2 = col_calc2.number_input("Tamaño por Envase", min_value=0.0, value=None, placeholder="0")
+    unidad = col_calc3.selectbox("Unidad de Medida", ["Litros", "Kilos", "Gramos", "Cm3 / Ml", "Unidad / Kit"])
     
     val_n1 = n1 if n1 is not None else 0.0
     val_n2 = n2 if n2 is not None else 0.0
-    cant_final = val_n1 * val_n2
+    total_bruto = val_n1 * val_n2
     
-    st.write(f"Total a Ingresar: **{cant_final}**")
+    # Conversión automática a Kilos/Litros
+    if unidad == "Gramos" or unidad == "Cm3 / Ml":
+        cant_final = total_bruto / 1000
+        msg_unidad = "Kg/L (Convertido automáticamente)"
+    else:
+        cant_final = total_bruto
+        msg_unidad = unidad
+
+    st.metric(label=f"Total a Ingresar ({msg_unidad})", value=f"{cant_final:.2f}")
 
     if st.button("Guardar Ingreso", type="primary"):
         if lote and cant_final > 0:
@@ -140,17 +159,19 @@ def vista_ingreso():
                 new_row = {'Cod Producto': cod_p, 'Numero de Lote': lote, 'Cantidad': cant_final, 'SENASA': senasa, 'Cod_Barras': cod_barra, 'Fecha_Vencimiento': fecha_venc_dt}
                 df_s = pd.concat([df_s, pd.DataFrame([new_row])], ignore_index=True)
             
+            obs_detalle = f"Ingreso: {val_n1} envases de {val_n2} {unidad}"
+            
             mov = {
                 'Fecha Hora': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'ID_Pedido': "INGRESO", 
                 'Usuario': "Admin", 'Tipo de movimiento': "Compra", 'Cod Producto': cod_p, 
                 'Cuenta/Entidad': cuenta, 'Numero de Lote': lote, 'Cantidad': cant_final, 
-                'Destino Origen': "Depósito", 'Observaciones': "Ingreso Manual", 'Estado_Prep': 'TERMINADO'
+                'Destino Origen': "Depósito", 'Observaciones': obs_detalle, 'Estado_Prep': 'TERMINADO'
             }
             df_m = pd.concat([df_m, pd.DataFrame([mov])], ignore_index=True)
             save_all(df_p, df_s, df_m)
-            st.success("Guardado!"); time.sleep(1); st.session_state.vista="Menu"; st.rerun()
+            st.success(f"Guardado exitosamente: {cant_final} {msg_unidad}"); time.sleep(1.5); st.session_state.vista="Menu"; st.rerun()
         else:
-            st.error("Faltan datos obligatorios")
+            st.error("Faltan datos obligatorios (Lote o Cantidad)")
 
 def vista_carga():
     if st.button("Volver al Menú Principal"): st.session_state.vista = "Menu"; st.rerun()
@@ -178,7 +199,7 @@ def vista_carga():
         lote_selec = None; stock_disp = 0
     else:
         stock_prod['Vence'] = pd.to_datetime(stock_prod['Fecha_Vencimiento']).dt.strftime('%d/%m/%Y')
-        opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']} | Vence: {row['Vence']})", axis=1).tolist()
+        opciones_lote = stock_prod.apply(lambda row: f"{row['Numero de Lote']} (Disp: {row['Cantidad']:.2f} | Vence: {row['Vence']})", axis=1).tolist()
         lote_str = st.selectbox("Lote a utilizar", opciones_lote)
         lote_selec = lote_str.split(" (")[0]
         stock_disp = stock_prod[stock_prod['Numero de Lote'] == lote_selec]['Cantidad'].values[0]
@@ -192,7 +213,7 @@ def vista_carga():
     v_cb = cant_bultos if cant_bultos is not None else 0.0
     v_tb = tam_bultos if tam_bultos is not None else 0.0
     total_a_pedir = v_cb * v_tb
-    cc3.metric("Total Solicitado", f"{total_a_pedir}")
+    cc3.metric("Total Solicitado", f"{total_a_pedir:.2f}")
 
     if st.button("AGREGAR AL PEDIDO"):
         if not lote_selec: st.error("Debe seleccionar un lote con stock.")
@@ -210,6 +231,7 @@ def vista_carga():
         if st.button("CONFIRMAR Y ENVIAR A DEPÓSITO", type="primary"):
             if st.session_state.destino_actual:
                 id_ped = f"PED-{int(time.time())}"
+                
                 conn = get_db_connection()
                 df_m_live = conn.read(spreadsheet=SHEET_URL, worksheet="Movimientos", ttl=0)
                 if not df_m_live.empty: df_m_live.columns = df_m_live.columns.str.strip()
@@ -262,7 +284,7 @@ def vista_espera():
                 with col_info:
                     st.markdown(f"**Prod:** {prod_nom}")
                     st.markdown(f"**Lote PEDIDO:** `{lote_solicitado}`")
-                    st.markdown(f"**Cant PEDIDA:** `{cant_solicitada_abs}`")
+                    st.markdown(f"**Cant PEDIDA:** `{cant_solicitada_abs:.2f}`")
 
                 with col_accion:
                     c_lote, c_cant1, c_cant2 = st.columns(3)
@@ -274,10 +296,10 @@ def vista_espera():
                     v_te = tam_env if tam_env is not None else 0.0
                     cant_real_total = v_ce * v_te
                     
-                    if cant_real_total > 0: st.write(f" Real: **{cant_real_total}**")
+                    if cant_real_total > 0: st.write(f" Real: **{cant_real_total:.2f}**")
                     
                     alerta_stock = False; msg_alerta = ""
-                    if cant_real_total != cant_solicitada_abs and cant_real_total > 0:
+                    if abs(cant_real_total - cant_solicitada_abs) > 0.01 and cant_real_total > 0:
                         st.warning("Diferencia de Cantidad"); alerta_stock = True; msg_alerta += "Dif Cant. "
                     if lote_real:
                         l_real_norm = lote_real.strip().upper()
@@ -319,26 +341,50 @@ def vista_consultas():
         if not df_s.empty:
             st.markdown("🔴 Vencido | 🟡 Vence < 90 días | 🟢 Vence > 90 días")
             df_view = df_s[df_s['Cantidad'] != 0].copy()
+            
+            if 'SENASA' in df_view.columns:
+                df_view['SENASA'] = df_view['SENASA'].astype(str).replace('nan', '')
+            if 'Cod_Barras' in df_view.columns:
+                df_view['Cod_Barras'] = df_view['Cod_Barras'].astype(str).replace('nan', '')
+
             if 'Fecha_Vencimiento' in df_view.columns:
                 df_view = df_view.sort_values(by='Fecha_Vencimiento', ascending=True)
+                
                 st.dataframe(
                     df_view.style.map(aplicar_semaforo, subset=['Fecha_Vencimiento'])
                     .format({'Fecha_Vencimiento': lambda x: x.strftime('%d-%m-%Y') if pd.notnull(x) else '-'}), 
-                    use_container_width=True, height=500
+                    use_container_width=True, 
+                    height=500,
+                    column_config={
+                        "Cantidad": st.column_config.NumberColumn(
+                            "Cantidad",
+                            format="%.2f"
+                        ),
+                        "SENASA": st.column_config.TextColumn("SENASA"),
+                        "Cod_Barras": st.column_config.TextColumn("Cod_Barras"),
+                        "Numero de Lote": st.column_config.TextColumn("Numero de Lote")
+                    }
                 )
             else:
                 st.dataframe(df_view, use_container_width=True)
         else: st.warning("Sin stock registrado.")
     with t2:
         if not df_m.empty and 'Fecha Hora' in df_m.columns:
-            st.dataframe(df_m.sort_values(by='Fecha Hora', ascending=False), use_container_width=True)
+            st.dataframe(
+                df_m.sort_values(by='Fecha Hora', ascending=False), 
+                use_container_width=True,
+                column_config={
+                    "Cantidad": st.column_config.NumberColumn(format="%.2f"),
+                    "ID_Pedido": st.column_config.TextColumn(),
+                    "Numero de Lote": st.column_config.TextColumn(),
+                }
+            )
         else:
             st.dataframe(df_m, use_container_width=True)
 
-#ROUTER
+# ROUTER
 if st.session_state.vista == "Menu": vista_menu()
 elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
-
