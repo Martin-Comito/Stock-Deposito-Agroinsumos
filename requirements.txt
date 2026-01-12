@@ -1,6 +1,6 @@
 streamlit
+supabase
 pandas
-openpyxl
 qrcode
-pillow
-st-gsheets-connection
+xlsxwriter
+pytz
