@@ -6,6 +6,22 @@ import qrcode
 from io import BytesIO
 import re
 from streamlit_gsheets import GSheetsConnection
+# OCULTAR MENU Y HEADER DE STREAMLIT 
+st.markdown("""
+    <style>
+        /* Ocultar el menú de hamburguesa (tres rayitas) */
+        #MainMenu {visibility: hidden;}
+        
+        /* Ocultar el pie de página "Made with Streamlit" */
+        footer {visibility: hidden;}
+        
+        /* Ocultar la barra superior (Header) donde está "Share" y "Star" */
+        header {visibility: hidden;}
+        
+        /* Opcional: Ocultar el botón de "Deploy" si aparece */
+        .stAppDeployButton {display:none;}
+    </style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(
     page_title="AgroCheck Pro", 
@@ -541,3 +557,4 @@ elif st.session_state.vista == "Ingreso": vista_ingreso()
 elif st.session_state.vista == "Carga": vista_carga()
 elif st.session_state.vista == "Espera": vista_espera()
 elif st.session_state.vista == "Consultas": vista_consultas()
+
